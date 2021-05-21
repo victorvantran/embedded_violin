@@ -38,6 +38,92 @@
 #else
 	#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
+
+
+
+#define G3 5102
+#define GS3 4816
+#define AF3 4816
+#define A3 4545
+#define AS3 4290
+#define BF3 4290
+#define B3 4050
+#define C4 3822
+#define CS4 3608
+#define DF4 3608
+#define D4 3405
+#define DS4 3214
+#define EF4 3214
+#define E4 3034
+#define F4 2863
+#define FS4 2703
+#define GF4 2703
+#define G4 2551
+#define GS4 2408
+#define AF4 2408
+#define A4 2273
+#define AS4 2145
+#define BF4 2145
+#define B4 2025
+#define C5 1911
+#define CS5 1804
+#define DF5 1804
+#define D5 1703
+#define DS5 1607
+#define EF5 1607
+#define E5 1517
+#define F5 1432
+#define FS5 1351
+#define GF5 1351
+#define G5 1276
+#define GS5 1204
+#define AF5 1204
+#define A5 1136
+#define AS5 1073
+#define BF5 1073
+#define B5 1012
+#define C6 956
+#define CS6 902
+#define DF6 902
+#define D6 851
+#define DS6 804
+#define EF6 804
+#define E6 758
+#define F6 716
+#define FS6 676
+#define GF6 676
+#define G6 638
+#define GS6 602
+#define AF6 602
+#define A6 568
+#define AS6 536
+#define BF6 536
+#define B6 506
+#define C7 478
+#define CS7 451
+#define DF7 451
+#define D7 426
+#define DS7 402
+#define EF7 402
+#define E7 379
+#define F7 358
+#define FS7 338
+#define GF7 338
+#define G7 319
+#define GS7 301
+#define AF7 301
+#define A7 284
+#define R 0
+
+#define S 250
+#define E 400
+#define DE 600
+#define Q 800
+#define DQ 1200
+
+
+
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -49,6 +135,7 @@
 ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
@@ -57,7 +144,7 @@ UART_HandleTypeDef huart2;
 osThreadId_t transDataTaskHandle;
 const osThreadAttr_t transDataTask_attributes = {
   .name = "transDataTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* USER CODE BEGIN PV */
@@ -71,6 +158,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM2_Init(void);
 void StartTransferDataTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -118,8 +206,10 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
@@ -366,6 +456,55 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -469,8 +608,112 @@ static void MX_GPIO_Init(void)
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+int16_t notes[] = {
+			AF3, DF4,	F4,
+			EF4,	DF4,	AF3,	BF3,	C4,		DF4,
+			EF4,	F4, GF4,
+			F4, 	EF4, 	AF4,	AF4,
+			AF4, 	BF4, 	GF4, 	F4, 	EF4, 	BF3,
+			EF4, 	DF4, 	BF3, 	C4,
+			DF4, 	EF4, 	F4, 	AF4, 	C5, 	BF4,
+			G4,		G4,		AF4,	A4
+	};
 
-#define
+
+
+	int16_t count[] = {
+			Q,	DQ,	E,
+			DE,	S,	E,	E,	E,	E,
+			Q,	DQ,	E,
+			E,	E,	DQ,	E,
+			E,	E,	E,	E,	DE,	S,
+			E,	E,	DQ,	E,
+			E,	E,	E,	E,	DE,	S,
+			Q,	E,	Q,	E
+	};
+
+
+
+	/*
+	int16_t notesD[] = {
+			R,		R,		R,		R,		GF5,	F5,
+			F5,		EF5,	B4,		DF5,	C5,		R,	GF4,
+			BF4,	AF4,	E4,		GF4,	F4,		R,	AF4,
+			AF4,	G4,		C4,		EF4,	DF4,	F4,
+			AF4,	G4,		BF4,	EF5,	DF5,
+			DF5,	C5,		R,		F4,		AF4,	GF4,
+			BF4,	DF5,	C5,		EF5,	AF5,	GF5,
+			R,
+
+			R,	R,	R
+	};
+
+
+	int16_t notesA[] = {
+			GF5,	AF5,	A5,		BF5,	EF6,	DF6,
+			DF6,	C6,		G5,		BF5,	AF5,	R,		EF5,
+			GF5,	F5,		C5,		EF5,	DF5,	R,		F5,
+			F5,		EF5,	A4,		C5,		BF4,	DF5,
+			F5,		EF5,	G5,		C6,		BF5,
+			BF5,	AF5,	R,		D5,		F5,		EF5,
+			GF5,	BF5,	AF5,	C6,		F6,		EF6,
+			AF5,
+
+
+
+			R,	R,	R
+	};
+
+
+	int16_t count[] = {
+			E,	E,	E,	E,	DE,	S,
+			E,	E,	E,	E,	E,	S,	S,
+			E,	E,	E,	E,	S,	S,	E,
+			E,	E,	E,	E,	DE,	S,
+			E,	E,	E,	Q,	E,
+			E,	E,	E,	E,	E,	E,
+			DE,	S,	E,	E,	E,	E,
+			Q,
+
+			Q,	Q,	Q
+	};
+	*/
+
+
+	/*
+	int16_t vibrato[] = {
+			F5,
+			F5 + 4*2, F5 + 8*2, F5 + 12*2, F5 + 16*2, F5 + 12*2, F5 + 8*2, F5 + 4*2,
+			F5 - 4*2, F5 - 8*2, F5 - 12*2, F5 - 16*2, F5 - 12*2, F5 - 8*2, F5 - 4*2,
+			F5,
+	};
+	*/
+
+
+	int16_t vibrato[] = {
+			DF4,
+			DF4 + 4*3, DF4 + 8*3, DF4 + 12*3, DF4 + 16*3, DF4 + 12*3, DF4 + 8*3, DF4 + 4*3,
+			DF4 - 4*3, DF4 - 8*3, DF4 - 12*3, DF4 - 16*3, DF4 - 12*3, DF4 - 8*3, DF4 - 4*3,
+			DF4,
+	};
+
+
+
+
+float movingAverage(float avg, float new)
+{
+	return (avg - avg/20.0 + new/20.0);
+}
+
+
+int16_t getPeriod(float v, float sLength, int16_t raw_adc)
+{
+	// scale = 5.772727
+	if (raw_adc < 300 || raw_adc > 2205) return 0;
+	return (int16_t)( ((2*(sLength - (raw_adc/(5.772727f)) + 51.9685f))/v) * 1000000 );
+	//return (int16_t)( ((2*(sLength - raw_adc/(5.772727f)))/v) * 1000000 );
+}
+
 
 /* USER CODE END 4 */
 
@@ -484,12 +727,25 @@ static void MX_GPIO_Init(void)
 void StartTransferDataTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-	int16_t notes[] = {4816, 3608, 2863, 3214, 3608, 4816, 4290, 3822, 3608, 3214, 2863, 2703, 2863, 3214, 2408, 2408};
 
 	uint16_t prevData = 0;
 	uint16_t data = 0;
 
+
+	uint16_t prevPeriod = 0;
+	uint16_t period = 0;
+
+
 	int32_t j = 0;
+
+	uint16_t prevMovAvg = 0;
+	uint16_t movAvg = 0;
+
+	float avg = 0;
+	float new = 0;
+	uint8_t count = 0;
+
+
 
 	/* Infinite loop */
   for(;;)
@@ -499,27 +755,159 @@ void StartTransferDataTask(void *argument)
   	HAL_ADC_Start(&hadc1);
   	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
   	data = HAL_ADC_GetValue(&hadc1);
-  	HAL_UART_Transmit(&huart2, (uint8_t *)&data, 2, 0xFFFF);
+  	//HAL_UART_Transmit(&huart2, (uint8_t *)&adc_raw, 2, HAL_MAX_DELAY);
     //printf("%u\r\n", data);
+    //		osDelay(10);
+    new = (float)data;
+    //avg = movingAverage(avg, new);
+
+    if (count < 20)
+    {
+    	if (count > 9)
+    	{
+    		avg = new;
+    	}
+    	if (count > 10)
+    	{
+    		avg = movingAverage(avg, new);
+    	}
+    	count++;
+    }
+    else
+    {
+  		avg = movingAverage(avg, new);
+      movAvg = (uint16_t)(avg);
+    }
+    /*
+    if (count < 40)
+    {
+    	if (count > 30)
+    	{
+        avg = movingAverage(avg, new);
+        movAvg = (uint16_t)(avg);
+    	}
+    	count++;
+    }
+    else
+    {
+      avg = movingAverage(avg, new);
+      movAvg = (uint16_t)(avg);
+    }
+    */
+
+
+    //printf("%u\r\n", movAvg);
+
+
+		//if ((prevPeriod - period) > 5 || (prevPeriod - period) < -5)
+		//if ((prevData - data) > 20 || (prevData - data) < -20)
+		if ((prevMovAvg - movAvg) > 5 || (prevMovAvg - movAvg) < -5)
+		{
+			period = getPeriod(128772.0f, 328.5f, movAvg);
+			printf("Period: %u\r\n", period);
+
+			if (count >= 10)
+			{
+				__HAL_TIM_SET_COUNTER(&htim1, 0);
+				TIM1->ARR = (period);
+				htim1.Instance->CCR1 = TIM1->ARR/2;
+
+				//__HAL_TIM_SET_COUNTER(&htim3, 0);
+				TIM3->ARR = (period);
+				htim3.Instance->CCR1 = TIM3->ARR/2;
+			}
+			else
+			{
+				TIM1->ARR = (0);
+				TIM1->ARR = (0);
+
+			}
+
+
+			//prevPeriod = period;
+			//prevData = data;
+			prevMovAvg = movAvg;
+		}
+		osDelay(1);
+
+    if (data == 0)
+    {
+    	movAvg = 0;
+    	count = 0;
+    }
 
 
 
-  	//if (prevData != data)
-  	if ((prevData - data) > 5 || (prevData - data) < -5)
+
+  	/*
+  	HAL_ADC_Start(&hadc1);
+  	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+  	data = HAL_ADC_GetValue(&hadc1);
+  	//HAL_UART_Transmit(&huart2, (uint8_t *)&data, 2, 0xFFFF);
+    printf("%u\r\n", data);
+  	//printf("Hello\r\n");
+    */
+
+
+    // Move Average
+    //if (prevData != data)
+
+
+
+    /*
+    //if (prevMovAvg != movAvg)
+		if ((prevMovAvg - movAvg) > 5 || (prevMovAvg - movAvg) < -5)
+		{
+			//__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), (data*2)/2 - 1));
+
+			__HAL_TIM_SET_COUNTER(&htim1, 0);
+			TIM1->ARR = (movAvg);
+			htim1.Instance->CCR1 = TIM1->ARR/2;
+
+			//__HAL_TIM_SET_COUNTER(&htim3, 0);
+			TIM3->ARR = (movAvg);
+			htim3.Instance->CCR1 = TIM3->ARR/2;
+			prevMovAvg = movAvg;
+
+		}
+
+		osDelay(100);
+
+
+    if (data == 0)
+    {
+    	movAvg = 0;
+    }
+    */
+
+    /*
+  	if (prevData != data)
+  	//if ((prevData - data) > 100 || (prevData - data) < -100)
   	{
     	//__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), (data*2)/2 - 1));
+
   		__HAL_TIM_SET_COUNTER(&htim1, 0);
     	TIM1->ARR = (data*2);
     	htim1.Instance->CCR1 = TIM1->ARR/2;
 
-  		__HAL_TIM_SET_COUNTER(&htim3, 0);
+
+
+    	__HAL_TIM_SET_COUNTER(&htim2, MIN(__HAL_TIM_GET_COUNTER(&htim2), (data*2*80)/2 - 1));
+    	TIM2->ARR = (data*2)*80;
+    	htim2.Instance->CCR1 = TIM2->ARR/2;
+
+
+
+
+  		//__HAL_TIM_SET_COUNTER(&htim3, 0);
     	TIM3->ARR = (data);
     	htim3.Instance->CCR1 = TIM3->ARR/2;
 
-    	prevData = data;
   	}
+  	prevData = data;
 
     osDelay(10);
+		*/
 
 
   	/*
@@ -529,11 +917,43 @@ void StartTransferDataTask(void *argument)
   	htim1.Instance->CCR1 = TIM1->ARR/2;
 
   	__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), notes[j] - 1));
-  	TIM3->ARR = notes[j]*2;
+  	TIM3->ARR = notes[j];
   	htim3.Instance->CCR1 = TIM3->ARR/2;
 
-    osDelay(500);
+    osDelay(count[j]);
+		*/
+
+  	/*
+  	j = (j + 1) % (sizeof(notesD)/sizeof(notesD[0]));
+  	__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), notesD[j]/2 - 1));
+  	TIM1->ARR = notesD[j];
+  	htim1.Instance->CCR1 = TIM1->ARR/2;
+
+  	__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), notesA[j] - 1));
+  	TIM3->ARR = notesA[j];
+  	htim3.Instance->CCR1 = TIM3->ARR/2;
+
+    osDelay(count[j]);
     */
+
+
+
+
+
+
+
+
+  	/*
+  	j = (j + 1) % (sizeof(vibrato)/sizeof(vibrato[0]));
+		__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), vibrato[j] - 1));
+		TIM1->ARR = vibrato[j];
+		htim1.Instance->CCR1 = TIM1->ARR/2;
+
+		__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), vibrato[j] - 1));
+		TIM3->ARR = vibrato[j];
+		htim3.Instance->CCR1 = TIM3->ARR/2;
+		*/
+
   }
   /* USER CODE END 5 */
 }

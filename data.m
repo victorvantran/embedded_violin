@@ -54,7 +54,7 @@ i = 100
 while (1)
   data(i) = typecast(srl_read(s, 2), 'uint16');
   plot(data);
-  axis([i - 100 i 0 300]);
+  axis([i - 100 i -1000 5096]);
   
   pause(0.002);
   i = i+1;
