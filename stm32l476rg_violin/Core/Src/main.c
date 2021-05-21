@@ -702,15 +702,16 @@ int16_t notes[] = {
 
 float movingAverage(float avg, float new)
 {
-	return (avg - avg/20.0 + new/20.0);
+	return (avg - avg/50.0 + new/50.0);
 }
 
 
 int16_t getPeriod(float v, float sLength, int16_t raw_adc)
 {
 	// scale = 5.772727
+	// Need to recalibrate the starting and end adc
 	if (raw_adc < 300 || raw_adc > 2205) return 0;
-	return (int16_t)( ((2*(sLength - (raw_adc/(5.772727f)) + 51.9685f))/v) * 1000000 );
+	return (int16_t)( ((2*(sLength - (raw_adc/(7.816666666f)) + 51.9685f))/v) * 1000000 );
 	//return (int16_t)( ((2*(sLength - raw_adc/(5.772727f)))/v) * 1000000 );
 }
 
@@ -756,7 +757,6 @@ void StartTransferDataTask(void *argument)
   	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
   	data = HAL_ADC_GetValue(&hadc1);
   	//HAL_UART_Transmit(&huart2, (uint8_t *)&adc_raw, 2, HAL_MAX_DELAY);
-    //printf("%u\r\n", data);
     //		osDelay(10);
     new = (float)data;
     //avg = movingAverage(avg, new);
@@ -772,54 +772,77 @@ void StartTransferDataTask(void *argument)
     		avg = movingAverage(avg, new);
     	}
     	count++;
+    	if (TIM1->ARR == 0 && count == 20)
+    	{
+  			period = getPeriod(128772.0f, 328.5f, movAvg);
+				__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), period/2 - 1));
+				TIM1->ARR = (period);
+				htim1.Instance->CCR1 = TIM1->ARR/2;
+
+
+				__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), period/2 - 1));
+				TIM3->ARR = (period);
+				htim3.Instance->CCR1 = TIM3->ARR/2;
+    	}
     }
     else
     {
   		avg = movingAverage(avg, new);
       movAvg = (uint16_t)(avg);
     }
-    /*
-    if (count < 40)
-    {
-    	if (count > 30)
-    	{
-        avg = movingAverage(avg, new);
-        movAvg = (uint16_t)(avg);
-    	}
-    	count++;
-    }
-    else
-    {
-      avg = movingAverage(avg, new);
-      movAvg = (uint16_t)(avg);
-    }
-    */
+
+    //printf("ADC: %u\r\n", movAvg);
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.0f/35.0f)));
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.75f/35.0f)));
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.875f/35.0f)));
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.8125f/35.0f))); real longer than digital
+
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.84735f/35.0f)));
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.859375f/35.0f)));
+    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.9375f/35.0f)));
 
 
-    //printf("%u\r\n", movAvg);
 
 
-		//if ((prevPeriod - period) > 5 || (prevPeriod - period) < -5)
-		//if ((prevData - data) > 20 || (prevData - data) < -20)
-		if ((prevMovAvg - movAvg) > 5 || (prevMovAvg - movAvg) < -5)
+    //printf("mm: %u\r\n", (uint16_t)(movAvg/7.816666666f));
+
+
+
+		period = getPeriod(128772.0f, 328.5f, movAvg);
+		//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
+		printf("Period: %u\r\n", period);
+
+
+		if ((prevMovAvg - movAvg) > 10 || (prevMovAvg - movAvg) < -10)
 		{
-			period = getPeriod(128772.0f, 328.5f, movAvg);
-			printf("Period: %u\r\n", period);
+			//period = getPeriod(128772.0f, 328.5f, movAvg);
+			//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
+			//printf("Period: %u\r\n", period);
 
-			if (count >= 10)
+			if (count >= 20)
 			{
-				__HAL_TIM_SET_COUNTER(&htim1, 0);
+  			//HAL_TIM_Base_Stop(&htim1);
+				//htim1.Instance->CR1 &= ~TIM_CR1_CEN; // pause tim
+				__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), period/2 - 1));
 				TIM1->ARR = (period);
 				htim1.Instance->CCR1 = TIM1->ARR/2;
+  			//HAL_TIM_Base_Start(&htim1);
+				//htim1.Instance->CR1 |= TIM_CR1_CEN;
 
-				//__HAL_TIM_SET_COUNTER(&htim3, 0);
+
+  			//HAL_TIM_Base_Stop(&htim3);
+				//htim3.Instance->CR1 &= ~TIM_CR1_CEN; // pause tim
+				__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), period/2 - 1));
 				TIM3->ARR = (period);
 				htim3.Instance->CCR1 = TIM3->ARR/2;
+  			//HAL_TIM_Base_Start(&htim3);
+				//htim3.Instance->CR1 |= TIM_CR1_CEN;
+
 			}
 			else
 			{
 				TIM1->ARR = (0);
-				TIM1->ARR = (0);
+				TIM3->ARR = (0);
 
 			}
 
@@ -830,12 +853,27 @@ void StartTransferDataTask(void *argument)
 		}
 		osDelay(1);
 
-    if (data == 0)
+		if (data == 0)
+		{
+			movAvg = 0;
+			count = 0;
+		}
+		else if ((data - prevData) > 100 || (data - prevData) < -100)
     {
-    	movAvg = 0;
+    	movAvg = data;
     	count = 0;
     }
+    prevData = data;
 
+
+		/*
+    if (data == 0 || (data - prevData) > 40 || (data - prevData) < -40)
+    {
+    	movAvg = data;
+    	count = 0;
+    }
+    prevData = data;
+		*/
 
 
 
