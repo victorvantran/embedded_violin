@@ -172,6 +172,8 @@ PUTCHAR_PROTOTYPE
 	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
 	return ch;
 }
+
+
 /* USER CODE END 0 */
 
 /**
@@ -208,6 +210,8 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_Base_Start_IT(&htim1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
@@ -716,6 +720,10 @@ int16_t getPeriod(float v, float sLength, int16_t raw_adc)
 }
 
 
+volatile uint16_t prevPeriod = 0;
+volatile uint16_t period = 0;
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartTransferDataTask */
@@ -732,9 +740,6 @@ void StartTransferDataTask(void *argument)
 	uint16_t prevData = 0;
 	uint16_t data = 0;
 
-
-	uint16_t prevPeriod = 0;
-	uint16_t period = 0;
 
 
 	int32_t j = 0;
@@ -806,18 +811,32 @@ void StartTransferDataTask(void *argument)
 
     //printf("mm: %u\r\n", (uint16_t)(movAvg/7.816666666f));
 
-
-
-		period = getPeriod(128772.0f, 328.5f, movAvg);
-		//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
 		printf("Period: %u\r\n", period);
 
 
-		if ((prevMovAvg - movAvg) > 10 || (prevMovAvg - movAvg) < -10)
+		//period = getPeriod(128772.0f, 328.5f, movAvg);
+		//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
+		//printf("Period: %u\r\n", period);
+
+
+		if ((prevMovAvg - movAvg) > 1 || (prevMovAvg - movAvg) < -1)
 		{
+			if (count >= 20)
+			{
+				period = getPeriod(128772.0f, 328.5f, movAvg);
+			}
+			else
+			{
+				period = 0;
+			}
+			//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
+
+
+			/*
 			//period = getPeriod(128772.0f, 328.5f, movAvg);
 			//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
 			//printf("Period: %u\r\n", period);
+
 
 			if (count >= 20)
 			{
@@ -845,6 +864,7 @@ void StartTransferDataTask(void *argument)
 				TIM3->ARR = (0);
 
 			}
+			*/
 
 
 			//prevPeriod = period;
@@ -1007,6 +1027,15 @@ void StartTransferDataTask(void *argument)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
+
+	if (htim->Instance == TIM1)
+	{
+		TIM1->ARR = (period);
+		htim1.Instance->CCR1 = TIM1->ARR/2;
+
+		TIM3->ARR = (period);
+		htim3.Instance->CCR1 = TIM3->ARR/2;
+	}
 
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
