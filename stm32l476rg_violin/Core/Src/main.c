@@ -164,7 +164,7 @@ const osThreadAttr_t xMainMenuTask_attributes = {
 osThreadId_t xPlayTickTaskHandle;
 const osThreadAttr_t xPlayTickTask_attributes = {
   .name = "xPlayTickTask",
-  .stack_size = 256 * 4,
+  .stack_size = 300 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for xPlayStateTask */
@@ -294,7 +294,7 @@ int main(void)
   xMainMenuTaskHandle = osThreadNew(StartMainMenuTask, NULL, &xMainMenuTask_attributes);
 
   /* creation of xPlayTickTask */
-  //xPlayTickTaskHandle = osThreadNew(StartPlayTickTask, NULL, &xPlayTickTask_attributes);
+  xPlayTickTaskHandle = osThreadNew(StartPlayTickTask, NULL, &xPlayTickTask_attributes);
 
   /* creation of xPlayStateTask */
   xPlayStateTaskHandle = osThreadNew(StartPlayState, NULL, &xPlayStateTask_attributes);
@@ -793,7 +793,7 @@ void StartMainMenuTask(void *argument)
 		// Initial Command
 		xSynchWakeTime = xTaskGetTickCount();
 		running = 1;
-		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_STATE));
+		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_TICK | EB_PLAY_STATE));
 
 
 		// WAIT EVENT SYNCHRONIZE?
@@ -823,7 +823,8 @@ void StartPlayTickTask(void *argument)
   {
 		// wait for a semaphore
 		xEventGroupValue = osEventFlagsWait(xEmbeddedViolinEventGroupHandle, xBitsToWaitFor, osFlagsWaitAny, 1000);
-		if ((xEventGroupValue & EB_PLAY_TICK) != 0)
+
+		if ((xEventGroupValue & EB_ERROR) == 0 && (xEventGroupValue & EB_PLAY_TICK) != 0)
 		{
 			while (running)
 			{
@@ -851,10 +852,8 @@ void StartPlayState(void *argument)
   for(;;)
   {
   	xEventGroupValue = osEventFlagsWait(xEmbeddedViolinEventGroupHandle, xBitsToWaitFor, osFlagsWaitAny, 1000);
-  	printf("%u\r\n", xEventGroupValue);
 		if ((xEventGroupValue & EB_ERROR) == 0 && (xEventGroupValue & EB_PLAY_STATE) != 0)
 		{
-			printf("PLAY STATE\r\n");
 			Piece_vParseCommand(&xPiece);
 			running = 0;
 		}
