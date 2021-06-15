@@ -20,10 +20,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <string.h>
+#include "fatfs_sd.h"
+#include "piece.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +42,8 @@
 #else
 	#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
+
+
 
 
 
@@ -134,18 +140,42 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
+SPI_HandleTypeDef hspi1;
+
 TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
-/* Definitions for transDataTask */
-osThreadId_t transDataTaskHandle;
-const osThreadAttr_t transDataTask_attributes = {
-  .name = "transDataTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+/* Definitions for xMainMenuTask */
+osThreadId_t xMainMenuTaskHandle;
+const osThreadAttr_t xMainMenuTask_attributes = {
+  .name = "xMainMenuTask",
+  .stack_size = 300 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for xPlayTickTask */
+osThreadId_t xPlayTickTaskHandle;
+const osThreadAttr_t xPlayTickTask_attributes = {
+  .name = "xPlayTickTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal2,
+};
+/* Definitions for xPlayGoalTask */
+osThreadId_t xPlayGoalTaskHandle;
+const osThreadAttr_t xPlayGoalTask_attributes = {
+  .name = "xPlayGoalTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
+};
+/* Definitions for xBSPlayTick */
+osSemaphoreId_t xBSPlayTickHandle;
+const osSemaphoreAttr_t xBSPlayTick_attributes = {
+  .name = "xBSPlayTick"
+};
+/* Definitions for xBSPlayGoal */
+osSemaphoreId_t xBSPlayGoalHandle;
+const osSemaphoreAttr_t xBSPlayGoal_attributes = {
+  .name = "xBSPlayGoal"
 };
 /* USER CODE BEGIN PV */
 
@@ -157,9 +187,10 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_TIM3_Init(void);
-static void MX_TIM2_Init(void);
-void StartTransferDataTask(void *argument);
+static void MX_SPI1_Init(void);
+void StartMainMenuTask(void *argument);
+void StartPlayTickTask(void *argument);
+void StartPlayGoalCheck(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -169,9 +200,33 @@ void StartTransferDataTask(void *argument);
 /* USER CODE BEGIN 0 */
 PUTCHAR_PROTOTYPE
 {
-	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
+	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, pdMS_TO_TICKS(100));
 	return ch;
 }
+
+void transmit_uart(char *string) {
+	uint8_t len = strlen(string);
+	HAL_UART_Transmit(&huart2, (uint8_t*) string, len, 200);
+}
+
+
+
+
+FATFS fs;
+FATFS *pfs;
+FIL fil;
+FRESULT fres;
+DWORD fre_clust;
+uint32_t totalSpace, freeSpace;
+char buffer[100];
+
+
+PieceHandle_t xPiece;
+
+
+
+volatile int32_t running = 0;
+
 
 
 /* USER CODE END 0 */
@@ -207,14 +262,10 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM1_Init();
-  MX_TIM3_Init();
-  MX_TIM2_Init();
+  MX_FATFS_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_Base_Start_IT(&htim1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -223,6 +274,13 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of xBSPlayTick */
+  xBSPlayTickHandle = osSemaphoreNew(1, 0, &xBSPlayTick_attributes);
+
+  /* creation of xBSPlayGoal */
+  xBSPlayGoalHandle = osSemaphoreNew(1, 0, &xBSPlayGoal_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -237,8 +295,14 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of transDataTask */
-  transDataTaskHandle = osThreadNew(StartTransferDataTask, NULL, &transDataTask_attributes);
+  /* creation of xMainMenuTask */
+  xMainMenuTaskHandle = osThreadNew(StartMainMenuTask, NULL, &xMainMenuTask_attributes);
+
+  /* creation of xPlayTickTask */
+  xPlayTickTaskHandle = osThreadNew(StartPlayTickTask, NULL, &xPlayTickTask_attributes);
+
+  /* creation of xPlayGoalTask */
+  xPlayGoalTaskHandle = osThreadNew(StartPlayGoalCheck, NULL, &xPlayGoalTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -390,6 +454,46 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief TIM1 Initialization Function
   * @param None
   * @retval None
@@ -409,12 +513,12 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 80 - 1;
+  htim1.Init.Prescaler = 10 - 1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -460,104 +564,6 @@ static void MX_TIM1_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
-
-}
-
-/**
-  * @brief TIM3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM3_Init(void)
-{
-
-  /* USER CODE BEGIN TIM3_Init 0 */
-
-  /* USER CODE END TIM3_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-
-  /* USER CODE BEGIN TIM3_Init 1 */
-
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 80 - 1;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM3_Init 2 */
-
-  /* USER CODE END TIM3_Init 2 */
-  HAL_TIM_MspPostInit(&htim3);
-
-}
-
-/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -599,12 +605,23 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+
+  /*Configure GPIO pin : PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
@@ -684,29 +701,11 @@ int16_t notes[] = {
 	*/
 
 
-	/*
-	int16_t vibrato[] = {
-			F5,
-			F5 + 4*2, F5 + 8*2, F5 + 12*2, F5 + 16*2, F5 + 12*2, F5 + 8*2, F5 + 4*2,
-			F5 - 4*2, F5 - 8*2, F5 - 12*2, F5 - 16*2, F5 - 12*2, F5 - 8*2, F5 - 4*2,
-			F5,
-	};
-	*/
 
 
-	int16_t vibrato[] = {
-			DF4,
-			DF4 + 4*3, DF4 + 8*3, DF4 + 12*3, DF4 + 16*3, DF4 + 12*3, DF4 + 8*3, DF4 + 4*3,
-			DF4 - 4*3, DF4 - 8*3, DF4 - 12*3, DF4 - 16*3, DF4 - 12*3, DF4 - 8*3, DF4 - 4*3,
-			DF4,
-	};
-
-
-
-
-float movingAverage(float avg, float new)
+float movingAverage(float avg, float new, uint8_t numSamples)
 {
-	return (avg - avg/50.0 + new/50.0);
+	return (avg - avg/numSamples + new/numSamples);
 }
 
 
@@ -726,294 +725,145 @@ volatile uint16_t period = 0;
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartTransferDataTask */
+/* USER CODE BEGIN Header_StartMainMenuTask */
 /**
-  * @brief  Function implementing the transferDataTas thread.
+  * @brief  Function implementing the xMainMenuTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartTransferDataTask */
-void StartTransferDataTask(void *argument)
+/* USER CODE END Header_StartMainMenuTask */
+void StartMainMenuTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 
-	uint16_t prevData = 0;
-	uint16_t data = 0;
-
-
-
-	int32_t j = 0;
-
-	uint16_t prevMovAvg = 0;
-	uint16_t movAvg = 0;
-
-	float avg = 0;
-	float new = 0;
-	uint8_t count = 0;
-
-
-
-	/* Infinite loop */
+  /* USER CODE BEGIN StartMainMenuTask */
+  /* Infinite loop */
   for(;;)
   {
+  	printf("Main Menu\r\n");
+    osDelay(1000);
 
-
-  	HAL_ADC_Start(&hadc1);
-  	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-  	data = HAL_ADC_GetValue(&hadc1);
-  	//HAL_UART_Transmit(&huart2, (uint8_t *)&adc_raw, 2, HAL_MAX_DELAY);
-    //		osDelay(10);
-    new = (float)data;
-    //avg = movingAverage(avg, new);
-
-    if (count < 20)
-    {
-    	if (count > 9)
-    	{
-    		avg = new;
-    	}
-    	if (count > 10)
-    	{
-    		avg = movingAverage(avg, new);
-    	}
-    	count++;
-    	if (TIM1->ARR == 0 && count == 20)
-    	{
-  			period = getPeriod(128772.0f, 328.5f, movAvg);
-				__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), period/2 - 1));
-				TIM1->ARR = (period);
-				htim1.Instance->CCR1 = TIM1->ARR/2;
-
-
-				__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), period/2 - 1));
-				TIM3->ARR = (period);
-				htim3.Instance->CCR1 = TIM3->ARR/2;
-    	}
-    }
-    else
-    {
-  		avg = movingAverage(avg, new);
-      movAvg = (uint16_t)(avg);
-    }
-
-    //printf("ADC: %u\r\n", movAvg);
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.0f/35.0f)));
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.75f/35.0f)));
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.875f/35.0f)));
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.8125f/35.0f))); real longer than digital
-
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.84735f/35.0f)));
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.859375f/35.0f)));
-    //printf("mm: %u\r\n", (uint16_t)(movAvg * (6.9375f/35.0f)));
+    printf("Reading song\r\n");
+    osDelay(1000);
 
 
 
-
-    //printf("mm: %u\r\n", (uint16_t)(movAvg/7.816666666f));
-
-		printf("Period: %u\r\n", period);
-
-
-		//period = getPeriod(128772.0f, 328.5f, movAvg);
-		//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
-		//printf("Period: %u\r\n", period);
-
-
-		if ((prevMovAvg - movAvg) > 1 || (prevMovAvg - movAvg) < -1)
-		{
-			if (count >= 20)
-			{
-				period = getPeriod(128772.0f, 328.5f, movAvg);
-			}
-			else
-			{
-				period = 0;
-			}
-			//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
-
-
-			/*
-			//period = getPeriod(128772.0f, 328.5f, movAvg);
-			//printf("HZ: %u\r\n", (uint16_t)(1000000.0/(float)period));
-			//printf("Period: %u\r\n", period);
-
-
-			if (count >= 20)
-			{
-  			//HAL_TIM_Base_Stop(&htim1);
-				//htim1.Instance->CR1 &= ~TIM_CR1_CEN; // pause tim
-				__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), period/2 - 1));
-				TIM1->ARR = (period);
-				htim1.Instance->CCR1 = TIM1->ARR/2;
-  			//HAL_TIM_Base_Start(&htim1);
-				//htim1.Instance->CR1 |= TIM_CR1_CEN;
-
-
-  			//HAL_TIM_Base_Stop(&htim3);
-				//htim3.Instance->CR1 &= ~TIM_CR1_CEN; // pause tim
-				__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), period/2 - 1));
-				TIM3->ARR = (period);
-				htim3.Instance->CCR1 = TIM3->ARR/2;
-  			//HAL_TIM_Base_Start(&htim3);
-				//htim3.Instance->CR1 |= TIM_CR1_CEN;
-
-			}
-			else
-			{
-				TIM1->ARR = (0);
-				TIM3->ARR = (0);
-
-			}
-			*/
-
-
-			//prevPeriod = period;
-			//prevData = data;
-			prevMovAvg = movAvg;
-		}
-		osDelay(1);
-
-		if (data == 0)
-		{
-			movAvg = 0;
-			count = 0;
-		}
-		else if ((data - prevData) > 100 || (data - prevData) < -100)
-    {
-    	movAvg = data;
-    	count = 0;
-    }
-    prevData = data;
-
-
-		/*
-    if (data == 0 || (data - prevData) > 40 || (data - prevData) < -40)
-    {
-    	movAvg = data;
-    	count = 0;
-    }
-    prevData = data;
-		*/
-
-
-
-  	/*
-  	HAL_ADC_Start(&hadc1);
-  	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-  	data = HAL_ADC_GetValue(&hadc1);
-  	//HAL_UART_Transmit(&huart2, (uint8_t *)&data, 2, 0xFFFF);
-    printf("%u\r\n", data);
-  	//printf("Hello\r\n");
-    */
-
-
-    // Move Average
-    //if (prevData != data)
-
-
-
-    /*
-    //if (prevMovAvg != movAvg)
-		if ((prevMovAvg - movAvg) > 5 || (prevMovAvg - movAvg) < -5)
-		{
-			//__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), (data*2)/2 - 1));
-
-			__HAL_TIM_SET_COUNTER(&htim1, 0);
-			TIM1->ARR = (movAvg);
-			htim1.Instance->CCR1 = TIM1->ARR/2;
-
-			//__HAL_TIM_SET_COUNTER(&htim3, 0);
-			TIM3->ARR = (movAvg);
-			htim3.Instance->CCR1 = TIM3->ARR/2;
-			prevMovAvg = movAvg;
-
+    // Mount
+		fres = f_mount(&fs, "", 0);
+		if (fres == FR_OK) {
+			transmit_uart("Micro SD card is mounted successfully!\n");
+		} else if (fres != FR_OK) {
+			transmit_uart("Micro SD card's mount error!\n");
 		}
 
-		osDelay(100);
 
 
-    if (data == 0)
-    {
-    	movAvg = 0;
-    }
-    */
-
-    /*
-  	if (prevData != data)
-  	//if ((prevData - data) > 100 || (prevData - data) < -100)
-  	{
-    	//__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), (data*2)/2 - 1));
-
-  		__HAL_TIM_SET_COUNTER(&htim1, 0);
-    	TIM1->ARR = (data*2);
-    	htim1.Instance->CCR1 = TIM1->ARR/2;
-
-
-
-    	__HAL_TIM_SET_COUNTER(&htim2, MIN(__HAL_TIM_GET_COUNTER(&htim2), (data*2*80)/2 - 1));
-    	TIM2->ARR = (data*2)*80;
-    	htim2.Instance->CCR1 = TIM2->ARR/2;
-
-
-
-
-  		//__HAL_TIM_SET_COUNTER(&htim3, 0);
-    	TIM3->ARR = (data);
-    	htim3.Instance->CCR1 = TIM3->ARR/2;
-
-  	}
-  	prevData = data;
-
-    osDelay(10);
-		*/
-
-
-  	/*
-  	j = (j + 1) % (sizeof(notes)/sizeof(notes[0]));
-  	__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), notes[j]/2 - 1));
-  	TIM1->ARR = notes[j];
-  	htim1.Instance->CCR1 = TIM1->ARR/2;
-
-  	__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), notes[j] - 1));
-  	TIM3->ARR = notes[j];
-  	htim3.Instance->CCR1 = TIM3->ARR/2;
-
-    osDelay(count[j]);
-		*/
-
-  	/*
-  	j = (j + 1) % (sizeof(notesD)/sizeof(notesD[0]));
-  	__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), notesD[j]/2 - 1));
-  	TIM1->ARR = notesD[j];
-  	htim1.Instance->CCR1 = TIM1->ARR/2;
-
-  	__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), notesA[j] - 1));
-  	TIM3->ARR = notesA[j];
-  	htim3.Instance->CCR1 = TIM3->ARR/2;
-
-    osDelay(count[j]);
-    */
+		fres = f_open(&fil, "glazunov_violin_concerto.piece", FA_READ);
+		if (fres == FR_OK) {
+			transmit_uart("File opened for reading.\n");
+		} else if (fres != FR_OK) {
+			transmit_uart("File was not opened for reading!\n");
+		}
 
 
 
 
 
+		Piece_vInit(&xPiece, &fil);
+		Piece_vSetComposition(&xPiece, &fil);
 
 
+		/* Close file */
+		fres = f_close(&fil);
+		if (fres == FR_OK) {
+			transmit_uart("The file is closed.\n");
+		} else if (fres != FR_OK) {
+			transmit_uart("The file was not closed.\n");
+		}
 
-  	/*
-  	j = (j + 1) % (sizeof(vibrato)/sizeof(vibrato[0]));
-		__HAL_TIM_SET_COUNTER(&htim1, MIN(__HAL_TIM_GET_COUNTER(&htim1), vibrato[j] - 1));
-		TIM1->ARR = vibrato[j];
-		htim1.Instance->CCR1 = TIM1->ARR/2;
+		f_mount(NULL, "", 1);
+		if (fres == FR_OK) {
+			transmit_uart("The Micro SD card is unmounted!\n");
+		} else if (fres != FR_OK) {
+			transmit_uart("The Micro SD was not unmounted!");
+		}
 
-		__HAL_TIM_SET_COUNTER(&htim3, MIN(__HAL_TIM_GET_COUNTER(&htim3), vibrato[j] - 1));
-		TIM3->ARR = vibrato[j];
-		htim3.Instance->CCR1 = TIM3->ARR/2;
-		*/
+
+		// Initial Command
+		running = 1;
+		osSemaphoreRelease(xBSPlayTickHandle);
+		osSemaphoreRelease(xBSPlayGoalHandle);
+		Piece_vParseCommand(&xPiece);
+		running = 0;
+
+
+    osDelay(5000);
 
   }
+  /* USER CODE END StartMainMenuTask */
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartPlayTickTask */
+/**
+* @brief Function implementing the xPlayTickTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPlayTickTask */
+void StartPlayTickTask(void *argument)
+{
+  /* USER CODE BEGIN StartPlayTickTask */
+	static const TickType_t xFrequency = pdMS_TO_TICKS(50);
+	TickType_t xLastWakeTime;
+  /* Infinite loop */
+	for(;;)
+  {
+		// wait for a semaphore
+		osStatus_t ready = osSemaphoreAcquire(xBSPlayTickHandle, 1000);
+		if (ready == osOK)
+		{
+			xLastWakeTime = xTaskGetTickCount();
+			while (running)
+			{
+				printf("Capture Tick\r\n");
+		    vTaskDelayUntil(&xLastWakeTime, xFrequency);
+			}
+		}
+  }
+  /* USER CODE END StartPlayTickTask */
+}
+
+/* USER CODE BEGIN Header_StartPlayGoalCheck */
+/**
+* @brief Function implementing the xPlayGoalTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPlayGoalCheck */
+void StartPlayGoalCheck(void *argument)
+{
+  /* USER CODE BEGIN StartPlayGoalCheck */
+	static TickType_t xFrequency = pdMS_TO_TICKS(250);
+	TickType_t xLastWakeTime;
+  /* Infinite loop */
+  for(;;)
+  {
+  	float fMPB = ((60.0/(float)92)/8.0f) * 1000.0f;
+  	xFrequency = pdMS_TO_TICKS((uint32_t)(fMPB*32.0f));
+
+  	osStatus_t ready = osSemaphoreAcquire(xBSPlayGoalHandle, 1000);
+		if (ready == osOK)
+		{
+			xLastWakeTime = xTaskGetTickCount();
+			while (running)
+			{
+				printf("Goal check\r\n");
+				vTaskDelayUntil(&xLastWakeTime, xFrequency);
+			}
+		}
+  }
+  /* USER CODE END StartPlayGoalCheck */
 }
 
  /**
@@ -1027,16 +877,6 @@ void StartTransferDataTask(void *argument)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
-
-	if (htim->Instance == TIM1)
-	{
-		TIM1->ARR = (period);
-		htim1.Instance->CCR1 = TIM1->ARR/2;
-
-		TIM3->ARR = (period);
-		htim3.Instance->CCR1 = TIM3->ARR/2;
-	}
-
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
     HAL_IncTick();

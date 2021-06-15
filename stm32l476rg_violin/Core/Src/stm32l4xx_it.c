@@ -23,6 +23,7 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,7 +43,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern uint16_t Timer1, Timer2;					/* 1ms Timer Counter */
 
+extern DMA_HandleTypeDef hdma_spi1_tx;
+extern SPI_HandleTypeDef hspi1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,7 +60,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern TIM_HandleTypeDef htim1;
+extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
@@ -162,17 +166,17 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles TIM1 update interrupt and TIM16 global interrupt.
+  * @brief This function handles ADC1 and ADC2 interrupts.
   */
-void TIM1_UP_TIM16_IRQHandler(void)
+void ADC1_2_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
+  /* USER CODE BEGIN ADC1_2_IRQn 0 */
 
-  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
-  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+  /* USER CODE END ADC1_2_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC1_2_IRQn 1 */
 
-  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
+  /* USER CODE END ADC1_2_IRQn 1 */
 }
 
 /**
@@ -181,7 +185,15 @@ void TIM1_UP_TIM16_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
+	if (Timer1 > 0)
+	{
+		Timer1--;
+	}
 
+	if (Timer2 > 0)
+	{
+		Timer2--;
+	}
   /* USER CODE END TIM6_DAC_IRQn 0 */
   HAL_TIM_IRQHandler(&htim6);
   /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
