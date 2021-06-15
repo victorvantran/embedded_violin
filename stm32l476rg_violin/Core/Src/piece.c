@@ -155,7 +155,8 @@ void Piece_vPlayNotes(PieceHandle_t *pxPiece, uint8_t usNumNotes)
 	switch (usMaxBeatValue)
 	{
 	case 0x00:
-		osDelay((uint32_t)(fMPB*32.0f));
+		osDelay(250);
+		//osDelay((uint32_t)(fMPB*32.0f));
 		break;
 	case 0x01:
 		osDelay((uint32_t)(fMPB*16.0f));

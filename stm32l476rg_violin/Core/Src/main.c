@@ -128,6 +128,10 @@
 #define DQ 1200
 
 
+#define EB_MAIN_MENU (1UL << 0UL)
+#define EB_PLAY_STATE (1UL << 1UL)
+#define EB_PLAY_TICK (1UL << 2UL)
+
 
 
 /* USER CODE END PD */
@@ -150,35 +154,22 @@ UART_HandleTypeDef huart2;
 osThreadId_t xMainMenuTaskHandle;
 const osThreadAttr_t xMainMenuTask_attributes = {
   .name = "xMainMenuTask",
-  .stack_size = 300 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for xPlayTickTask */
 osThreadId_t xPlayTickTaskHandle;
 const osThreadAttr_t xPlayTickTask_attributes = {
   .name = "xPlayTickTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
-/* Definitions for xPlayGoalTask */
-osThreadId_t xPlayGoalTaskHandle;
-const osThreadAttr_t xPlayGoalTask_attributes = {
-  .name = "xPlayGoalTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal1,
-};
-/* Definitions for xBSPlayTick */
-osSemaphoreId_t xBSPlayTickHandle;
-const osSemaphoreAttr_t xBSPlayTick_attributes = {
-  .name = "xBSPlayTick"
-};
-/* Definitions for xBSPlayGoal */
-osSemaphoreId_t xBSPlayGoalHandle;
-const osSemaphoreAttr_t xBSPlayGoal_attributes = {
-  .name = "xBSPlayGoal"
+/* Definitions for xEmbeddedViolinEventGroup */
+osEventFlagsId_t xEmbeddedViolinEventGroupHandle;
+const osEventFlagsAttr_t xEmbeddedViolinEventGroup_attributes = {
+  .name = "xEmbeddedViolinEventGroup"
 };
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -190,7 +181,6 @@ static void MX_TIM1_Init(void);
 static void MX_SPI1_Init(void);
 void StartMainMenuTask(void *argument);
 void StartPlayTickTask(void *argument);
-void StartPlayGoalCheck(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -206,7 +196,7 @@ PUTCHAR_PROTOTYPE
 
 void transmit_uart(char *string) {
 	uint8_t len = strlen(string);
-	HAL_UART_Transmit(&huart2, (uint8_t*) string, len, 200);
+	HAL_UART_Transmit(&huart2, (uint8_t*) string, len, pdMS_TO_TICKS(100));
 }
 
 
@@ -275,13 +265,6 @@ int main(void)
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
-  /* Create the semaphores(s) */
-  /* creation of xBSPlayTick */
-  xBSPlayTickHandle = osSemaphoreNew(1, 0, &xBSPlayTick_attributes);
-
-  /* creation of xBSPlayGoal */
-  xBSPlayGoalHandle = osSemaphoreNew(1, 0, &xBSPlayGoal_attributes);
-
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -301,12 +284,13 @@ int main(void)
   /* creation of xPlayTickTask */
   xPlayTickTaskHandle = osThreadNew(StartPlayTickTask, NULL, &xPlayTickTask_attributes);
 
-  /* creation of xPlayGoalTask */
-  xPlayGoalTaskHandle = osThreadNew(StartPlayGoalCheck, NULL, &xPlayGoalTask_attributes);
-
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* Create the event(s) */
+  /* creation of xEmbeddedViolinEventGroup */
+  xEmbeddedViolinEventGroupHandle = osEventFlagsNew(&xEmbeddedViolinEventGroup_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -791,8 +775,7 @@ void StartMainMenuTask(void *argument)
 
 		// Initial Command
 		running = 1;
-		osSemaphoreRelease(xBSPlayTickHandle);
-		osSemaphoreRelease(xBSPlayGoalHandle);
+		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_STATE | EB_PLAY_TICK));
 		Piece_vParseCommand(&xPiece);
 		running = 0;
 
@@ -814,14 +797,16 @@ void StartMainMenuTask(void *argument)
 void StartPlayTickTask(void *argument)
 {
   /* USER CODE BEGIN StartPlayTickTask */
+	uint32_t xEventGroupValue;
+	static const int32_t xBitsToWaitFor = (EB_PLAY_TICK);
 	static const TickType_t xFrequency = pdMS_TO_TICKS(50);
 	TickType_t xLastWakeTime;
   /* Infinite loop */
 	for(;;)
   {
 		// wait for a semaphore
-		osStatus_t ready = osSemaphoreAcquire(xBSPlayTickHandle, 1000);
-		if (ready == osOK)
+		xEventGroupValue = osEventFlagsWait(xEmbeddedViolinEventGroupHandle, xBitsToWaitFor, osFlagsWaitAny, 1000);
+		if ((xEventGroupValue & EB_PLAY_TICK) != 0)
 		{
 			xLastWakeTime = xTaskGetTickCount();
 			while (running)
@@ -832,38 +817,6 @@ void StartPlayTickTask(void *argument)
 		}
   }
   /* USER CODE END StartPlayTickTask */
-}
-
-/* USER CODE BEGIN Header_StartPlayGoalCheck */
-/**
-* @brief Function implementing the xPlayGoalTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartPlayGoalCheck */
-void StartPlayGoalCheck(void *argument)
-{
-  /* USER CODE BEGIN StartPlayGoalCheck */
-	static TickType_t xFrequency = pdMS_TO_TICKS(250);
-	TickType_t xLastWakeTime;
-  /* Infinite loop */
-  for(;;)
-  {
-  	float fMPB = ((60.0/(float)92)/8.0f) * 1000.0f;
-  	xFrequency = pdMS_TO_TICKS((uint32_t)(fMPB*32.0f));
-
-  	osStatus_t ready = osSemaphoreAcquire(xBSPlayGoalHandle, 1000);
-		if (ready == osOK)
-		{
-			xLastWakeTime = xTaskGetTickCount();
-			while (running)
-			{
-				printf("Goal check\r\n");
-				vTaskDelayUntil(&xLastWakeTime, xFrequency);
-			}
-		}
-  }
-  /* USER CODE END StartPlayGoalCheck */
 }
 
  /**
