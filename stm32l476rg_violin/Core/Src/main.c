@@ -133,6 +133,9 @@
 #define EB_PLAY_TICK (1UL << 2UL)
 
 
+#define EB_ERROR (1UL << 31UL)
+
+
 
 /* USER CODE END PD */
 
@@ -154,7 +157,7 @@ UART_HandleTypeDef huart2;
 osThreadId_t xMainMenuTaskHandle;
 const osThreadAttr_t xMainMenuTask_attributes = {
   .name = "xMainMenuTask",
-  .stack_size = 256 * 4,
+  .stack_size = 300 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for xPlayTickTask */
@@ -163,6 +166,13 @@ const osThreadAttr_t xPlayTickTask_attributes = {
   .name = "xPlayTickTask",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
+};
+/* Definitions for xPlayStateTask */
+osThreadId_t xPlayStateTaskHandle;
+const osThreadAttr_t xPlayStateTask_attributes = {
+  .name = "xPlayStateTask",
+  .stack_size = 300 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for xEmbeddedViolinEventGroup */
 osEventFlagsId_t xEmbeddedViolinEventGroupHandle;
@@ -181,6 +191,7 @@ static void MX_TIM1_Init(void);
 static void MX_SPI1_Init(void);
 void StartMainMenuTask(void *argument);
 void StartPlayTickTask(void *argument);
+void StartPlayState(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -216,6 +227,7 @@ PieceHandle_t xPiece;
 
 
 volatile int32_t running = 0;
+TickType_t xSynchWakeTime;
 
 
 
@@ -282,7 +294,10 @@ int main(void)
   xMainMenuTaskHandle = osThreadNew(StartMainMenuTask, NULL, &xMainMenuTask_attributes);
 
   /* creation of xPlayTickTask */
-  xPlayTickTaskHandle = osThreadNew(StartPlayTickTask, NULL, &xPlayTickTask_attributes);
+  //xPlayTickTaskHandle = osThreadNew(StartPlayTickTask, NULL, &xPlayTickTask_attributes);
+
+  /* creation of xPlayStateTask */
+  xPlayStateTaskHandle = osThreadNew(StartPlayState, NULL, &xPlayStateTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -682,6 +697,8 @@ int16_t notes[] = {
 
 			Q,	Q,	Q
 	};
+
+	500, 300, 300
 	*/
 
 
@@ -774,13 +791,14 @@ void StartMainMenuTask(void *argument)
 
 
 		// Initial Command
+		xSynchWakeTime = xTaskGetTickCount();
 		running = 1;
-		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_STATE | EB_PLAY_TICK));
-		Piece_vParseCommand(&xPiece);
-		running = 0;
+		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_STATE));
 
 
-    osDelay(5000);
+		// WAIT EVENT SYNCHRONIZE?
+
+    osDelay(7000);
 
   }
   /* USER CODE END StartMainMenuTask */
@@ -800,7 +818,6 @@ void StartPlayTickTask(void *argument)
 	uint32_t xEventGroupValue;
 	static const int32_t xBitsToWaitFor = (EB_PLAY_TICK);
 	static const TickType_t xFrequency = pdMS_TO_TICKS(50);
-	TickType_t xLastWakeTime;
   /* Infinite loop */
 	for(;;)
   {
@@ -808,15 +825,41 @@ void StartPlayTickTask(void *argument)
 		xEventGroupValue = osEventFlagsWait(xEmbeddedViolinEventGroupHandle, xBitsToWaitFor, osFlagsWaitAny, 1000);
 		if ((xEventGroupValue & EB_PLAY_TICK) != 0)
 		{
-			xLastWakeTime = xTaskGetTickCount();
 			while (running)
 			{
 				printf("Capture Tick\r\n");
-		    vTaskDelayUntil(&xLastWakeTime, xFrequency);
+		    vTaskDelayUntil(&xSynchWakeTime, xFrequency);
 			}
 		}
   }
   /* USER CODE END StartPlayTickTask */
+}
+
+/* USER CODE BEGIN Header_StartPlayState */
+/**
+* @brief Function implementing the xPlayStateTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPlayState */
+void StartPlayState(void *argument)
+{
+  /* USER CODE BEGIN StartPlayState */
+	uint32_t xEventGroupValue;
+	static const int32_t xBitsToWaitFor = (EB_PLAY_STATE);
+  /* Infinite loop */
+  for(;;)
+  {
+  	xEventGroupValue = osEventFlagsWait(xEmbeddedViolinEventGroupHandle, xBitsToWaitFor, osFlagsWaitAny, 1000);
+  	printf("%u\r\n", xEventGroupValue);
+		if ((xEventGroupValue & EB_ERROR) == 0 && (xEventGroupValue & EB_PLAY_STATE) != 0)
+		{
+			printf("PLAY STATE\r\n");
+			Piece_vParseCommand(&xPiece);
+			running = 0;
+		}
+  }
+  /* USER CODE END StartPlayState */
 }
 
  /**
