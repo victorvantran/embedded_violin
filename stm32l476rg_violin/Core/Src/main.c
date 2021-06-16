@@ -157,21 +157,21 @@ UART_HandleTypeDef huart2;
 osThreadId_t xMainMenuTaskHandle;
 const osThreadAttr_t xMainMenuTask_attributes = {
   .name = "xMainMenuTask",
-  .stack_size = 300 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for xPlayTickTask */
 osThreadId_t xPlayTickTaskHandle;
 const osThreadAttr_t xPlayTickTask_attributes = {
   .name = "xPlayTickTask",
-  .stack_size = 300 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for xPlayStateTask */
 osThreadId_t xPlayStateTaskHandle;
 const osThreadAttr_t xPlayStateTask_attributes = {
   .name = "xPlayStateTask",
-  .stack_size = 300 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for xEmbeddedViolinEventGroup */
@@ -759,7 +759,8 @@ void StartMainMenuTask(void *argument)
 
 
 
-		fres = f_open(&fil, "glazunov_violin_concerto.piece", FA_READ);
+		//fres = f_open(&fil, "glazunov_violin_concerto.piece", FA_READ);
+		fres = f_open(&fil, "glazunov.txt", FA_READ);
 		if (fres == FR_OK) {
 			transmit_uart("File opened for reading.\n");
 		} else if (fres != FR_OK) {
@@ -790,15 +791,16 @@ void StartMainMenuTask(void *argument)
 		}
 
 
+
 		// Initial Command
 		xSynchWakeTime = xTaskGetTickCount();
-		running = 1;
 		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_TICK | EB_PLAY_STATE));
+
 
 
 		// WAIT EVENT SYNCHRONIZE?
 
-    osDelay(7000);
+    osDelay(70000000);
 
   }
   /* USER CODE END StartMainMenuTask */
@@ -855,7 +857,6 @@ void StartPlayState(void *argument)
 		if ((xEventGroupValue & EB_ERROR) == 0 && (xEventGroupValue & EB_PLAY_STATE) != 0)
 		{
 			Piece_vParseCommand(&xPiece);
-			running = 0;
 		}
   }
   /* USER CODE END StartPlayState */
