@@ -164,7 +164,7 @@ const osThreadAttr_t xMainMenuTask_attributes = {
 osThreadId_t xPlayTickTaskHandle;
 const osThreadAttr_t xPlayTickTask_attributes = {
   .name = "xPlayTickTask",
-  .stack_size = 256 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for xPlayStateTask */
@@ -267,7 +267,6 @@ int main(void)
   MX_FATFS_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -512,7 +511,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 10 - 1;
+  htim1.Init.Prescaler = 8 - 1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -760,7 +759,8 @@ void StartMainMenuTask(void *argument)
 
 
 		//fres = f_open(&fil, "glazunov_violin_concerto.piece", FA_READ);
-		fres = f_open(&fil, "glazunov.txt", FA_READ);
+		//fres = f_open(&fil, "glazunov.txt", FA_READ);
+		fres = f_open(&fil, "test2.bin", FA_READ);
 		if (fres == FR_OK) {
 			transmit_uart("File opened for reading.\n");
 		} else if (fres != FR_OK) {
@@ -793,14 +793,15 @@ void StartMainMenuTask(void *argument)
 
 
 		// Initial Command
+	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 		xSynchWakeTime = xTaskGetTickCount();
 		osEventFlagsSet(xEmbeddedViolinEventGroupHandle, (EB_PLAY_TICK | EB_PLAY_STATE));
 
 
-
 		// WAIT EVENT SYNCHRONIZE?
 
-    osDelay(70000000);
+    osDelay(7000000000);
+    //osDelay(7000);
 
   }
   /* USER CODE END StartMainMenuTask */
