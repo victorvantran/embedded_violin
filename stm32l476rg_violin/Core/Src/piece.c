@@ -63,39 +63,58 @@ void Piece_vSetComposition(PieceHandle_t *pxPiece, FIL *pFil)
 }
 
 
+uint8_t Piece_ucParseBeatValue(PieceHandle_t *pxPiece)
+{
+	memcpy(&pxPiece->xPieceInstruction.usBeat, pxPiece->xComposition.pusComposition + pxPiece->xPieceInstruction.ulInstructionCounter, sizeof(pxPiece->xPieceInstruction.usBeat));
+	pxPiece->xPieceInstruction.ulInstructionCounter += sizeof(pxPiece->xPieceInstruction.usBeat);
+
+	return pxPiece->xPieceInstruction.usBeat;
+}
+
+
 void Piece_vParseCommand(PieceHandle_t *pxPiece)
 {
-	memcpy(&pxPiece->xPieceInstruction.usCommand, pxPiece->xComposition.pusComposition + pxPiece->xPieceInstruction.ulInstructionCounter, sizeof(pxPiece->xPieceInstruction.usCommand));
-	pxPiece->xPieceInstruction.ulInstructionCounter += sizeof(pxPiece->xPieceInstruction.usCommand);
+	uint8_t endCommand = 0;
 
-	printf("Command Line: %u\r\n", pxPiece->xPieceInstruction.ulInstructionCounter);
-	printf("Command: %u\r\n", pxPiece->xPieceInstruction.usCommand);
-
-	switch (pxPiece->xPieceInstruction.usCommand)
+	while (!endCommand)
 	{
-	case 0b00000000:
-		printf("END OF COMPOSITION\r\n");
-	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+		memcpy(&pxPiece->xPieceInstruction.usCommand, pxPiece->xComposition.pusComposition + pxPiece->xPieceInstruction.ulInstructionCounter, sizeof(pxPiece->xPieceInstruction.usCommand));
+		pxPiece->xPieceInstruction.ulInstructionCounter += sizeof(pxPiece->xPieceInstruction.usCommand);
 
-		return;
-	case 0b01111111:
-		Piece_vConfigureAll(pxPiece);
-		break;
-	default:
-		if (bIsPlayCommand(pxPiece->xPieceInstruction.usCommand))
+		printf("Command Line: %u\r\n", pxPiece->xPieceInstruction.ulInstructionCounter);
+		printf("Command: %u\r\n", pxPiece->xPieceInstruction.usCommand);
+
+		switch (pxPiece->xPieceInstruction.usCommand)
 		{
-			uint8_t ucNumNotes = (uint8_t)((0x07) & (pxPiece->xPieceInstruction.usCommand));
-			uint8_t ucBeatValue = (uint8_t)(((0x78) & (pxPiece->xPieceInstruction.usCommand)) >> 3);
-			Piece_vPlayNotes(pxPiece, ucBeatValue, ucNumNotes);
+		case 0b00000000:
+			endCommand = 1;
+			break;
+		case 0b01111111:
+			Piece_vConfigureAll(pxPiece);
+			break;
+		default:
+			if (bIsPlayCommand(pxPiece->xPieceInstruction.usCommand))
+			{
+				uint8_t ucNumNotes = (uint8_t)((0x07) & (pxPiece->xPieceInstruction.usCommand));
+				//uint8_t ucBeatValue = (uint8_t)(((0x78) & (pxPiece->xPieceInstruction.usCommand)) >> 3);
+				uint8_t ucBeatValue = Piece_ucParseBeatValue(pxPiece);
+				Piece_vPlayNotes(pxPiece, ucBeatValue, ucNumNotes);
+			}
+			else
+			{
+				printf("UNKNOWN COMMAND\r\n");
+			}
+			break;
 		}
-		else
-		{
-			printf("UNKNOWN COMMAND\r\n");
-		}
-		break;
 	}
 
-	Piece_vParseCommand(pxPiece);
+
+
+	printf("END OF COMPOSITION\r\n");
+	HAL_TIM_PWM_Stop_IT(&G_TIMER_HANDLE, G_TIMER_CHANNEL);
+	HAL_TIM_PWM_Stop_IT(&D_TIMER_HANDLE, D_TIMER_CHANNEL);
+	HAL_TIM_PWM_Stop_IT(&A_TIMER_HANDLE, A_TIMER_CHANNEL);
+	HAL_TIM_PWM_Stop_IT(&E_TIMER_HANDLE, E_TIMER_CHANNEL);
 }
 
 
@@ -189,7 +208,7 @@ void Piece_vResetGoal(PieceHandle_t *pxPiece)
 
 
 
-void Piece_vSetNoteGoal(PieceHandle_t *pxPiece)
+void Piece_vParseNoteGoal(PieceHandle_t *pxPiece)
 {
 	memcpy(&pxPiece->xPieceInstruction.uPlay, pxPiece->xComposition.pusComposition + pxPiece->xPieceInstruction.ulInstructionCounter, sizeof(pxPiece->xPieceInstruction.uPlay));
 	pxPiece->xPieceInstruction.ulInstructionCounter += sizeof(pxPiece->xPieceInstruction.uPlay);
@@ -233,14 +252,14 @@ void Piece_vSetNoteGoal(PieceHandle_t *pxPiece)
 }
 
 
-void Piece_vSetGoal(PieceHandle_t *pxPiece, uint8_t ucNumNotes)
+void Piece_vParseGoal(PieceHandle_t *pxPiece, uint8_t ucNumNotes)
 {
 	if (ucNumNotes > 4) ucNumNotes = 4;
 	// [!] Should throw error and abort if ucNumNotes > 4
 
 	for (int16_t i = 0; i < ucNumNotes; i++)
 	{
-		Piece_vSetNoteGoal(pxPiece);
+		Piece_vParseNoteGoal(pxPiece);
 	}
 }
 
@@ -253,59 +272,85 @@ void Piece_vPlayNotes(PieceHandle_t *pxPiece, uint8_t ucBeatValue, uint8_t ucNum
 	printf("Beat Value: %u\r\n", ucBeatValue);
 
 	Piece_vResetGoal(pxPiece);
-	Piece_vSetGoal(pxPiece, ucNumNotes);
+	Piece_vParseGoal(pxPiece, ucNumNotes);
 	Piece_Debug_vPrintGoal(pxPiece);
+
+	float fTupletScale;
+	switch (ucBeatValue)
+	{
+	case NOPELET:
+		fTupletScale = NOPELET_SCALE;
+		break;
+	case TRIPLET:
+		fTupletScale = TRIPLET_SCALE;
+		break;
+	case QUINTUPLET:
+		fTupletScale = QUINTUPLET_SCALE;
+		break;
+	case SEXTUPLET:
+		fTupletScale = SEXTUPLET_SCALE;
+		break;
+	case SEPTUPLET:
+		fTupletScale = SEPTUPLET_SCALE;
+		break;
+	default:
+		fTupletScale = NOPELET_SCALE;
+		break;
+	}
+
+	uint32_t ulMSPerBeatValue;
+	float fMSPerChrochet = (float)((60.0/(float)pxPiece->xPieceConfiguration.uBPM)) * 1000.0f; // Divide by 8 because 32nd beat resolution is 1/2^3 of quarter note BPM reference, for B is a quarter note
+	switch (ucBeatValue)
+	{
+	case LARGE:
+		// [!] Subtle missalignment (+/- 1ms) based on float to integer conversion. Keep track in the future
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*LARGE_SCALE*fTupletScale);
+		break;
+	case LONG:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*LONG_SCALE*fTupletScale);
+		break;
+	case BREVE:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*BREVE_SCALE*fTupletScale);
+		break;
+	case SEMIBREVE:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*SEMIBREVE_SCALE*fTupletScale);
+		break;
+	case MINIM:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*MINIM_SCALE*fTupletScale);
+		break;
+	case CROTCHET:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*CROTCHET_SCALE*fTupletScale);
+		break;
+	case QUAVER:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*QUAVER_SCALE*fTupletScale);
+		break;
+	case SEMIQUAVER:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*SEMIQUAVER_SCALE*fTupletScale);
+		break;
+	case DEMISEMIQUAVER:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*DEMISEMIQUAVER_SCALE*fTupletScale);
+		break;
+	case HEMIDEMISEMIQUAVER:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*HEMIDEMISEMIQUAVER_SCALE*fTupletScale);
+		break;
+	case SEMIHEMIDEMISEMIQUAVER:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*SEMIHEMIDEMISEMIQUAVER_SCALE*fTupletScale);
+		break;
+	case DEMISEMIHEMIDEMISEMIQUAVER:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*DEMISEMIHEMIDEMISEMIQUAVER_SCALE*fTupletScale);
+		break;
+	default:
+		ulMSPerBeatValue = (int32_t)(fMSPerChrochet*CROTCHET_SCALE*fTupletScale);
+		break;
+	}
+
 
 	if (ucNumNotes == 0)
 	{
 		printf("REST\r\n");
 	}
 
-
-	// Wait until
-	float fMSPerChrochet = (float)((60.0/(float)pxPiece->xPieceConfiguration.uBPM)) * 1000.0f; // Divide by 8 because 32nd beat resolution is 1/2^3 of quarter note BPM reference, for B is a quarter note
-	switch (ucBeatValue)
-	{
-	case LARGE:
-		// [!] Subtle missalignment (+/- 1ms) based on float to integer conversion. Keep track in the future
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*32.0f));
-		break;
-	case LONG:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*16.0f));
-		break;
-	case BREVE:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*8.0f));
-		break;
-	case SEMIBREVE:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*4.0f));
-		break;
-	case MINIM:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*2.0f));
-		break;
-	case CROTCHET:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*1.0f));
-		break;
-	case QUAVER:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*0.5f));
-		break;
-	case SEMIQUAVER:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*0.25f));
-		break;
-	case DEMISEMIQUAVER:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*0.125f));
-		break;
-	case HEMIDEMISEMIQUAVER:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*0.0625f));
-		break;
-	case SEMIHEMIDEMISEMIQUAVER:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*0.03125f));
-		break;
-	case DEMISEMIHEMIDEMISEMIQUAVER:
-		Piece_vCaptureFragment(pxPiece, (int32_t)(fMSPerChrochet*0.015625f));
-		break;
-	default:
-		break;
-	}
+	Piece_vCaptureFragment(pxPiece, ulMSPerBeatValue);
 }
 
 
@@ -360,25 +405,54 @@ void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
 
 	if (pxPiece->xGoal.xGString.bActive)
 	{
-		htim1.Instance->CCR1 = TIM1->ARR = Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
-		htim1.Instance->CCR1 = TIM1->ARR/2;
-
 		printf("	G: %u, %u\r\n", pxPiece->xGoal.xGString.ucFingerOffset, Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset));
+
+		G_TIMER_BASE->ARR = Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
+		G_TIMER_HANDLE.Instance->CCR1 = G_TIMER_BASE->ARR/2;
+		HAL_TIM_PWM_Start_IT(&G_TIMER_HANDLE, G_TIMER_CHANNEL);
+	}
+	else
+	{
+		HAL_TIM_PWM_Stop_IT(&G_TIMER_HANDLE, G_TIMER_CHANNEL);
 	}
 
 	if (pxPiece->xGoal.xDString.bActive)
 	{
-		printf("	A: %u, %u\r\n", pxPiece->xGoal.xDString.ucFingerOffset, Piece_usGetPitchTick(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset));
+		printf("	D: %u, %u\r\n", pxPiece->xGoal.xDString.ucFingerOffset, Piece_usGetPitchTick(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset));
+
+		D_TIMER_BASE->ARR = Piece_usGetPitchTick(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset);
+		D_TIMER_HANDLE.Instance->CCR1 = D_TIMER_BASE->ARR/2;
+		HAL_TIM_PWM_Start_IT(&D_TIMER_HANDLE, D_TIMER_CHANNEL);
+	}
+	else
+	{
+		HAL_TIM_PWM_Stop_IT(&D_TIMER_HANDLE, D_TIMER_CHANNEL);
 	}
 
 	if (pxPiece->xGoal.xAString.bActive)
 	{
-		printf("	D: %u, %u\r\n", pxPiece->xGoal.xAString.ucFingerOffset, Piece_usGetPitchTick(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset));
+		printf("	A: %u, %u\r\n", pxPiece->xGoal.xAString.ucFingerOffset, Piece_usGetPitchTick(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset));
+
+		A_TIMER_BASE->ARR = Piece_usGetPitchTick(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset);
+		A_TIMER_HANDLE.Instance->CCR1 = A_TIMER_BASE->ARR/2;
+		HAL_TIM_PWM_Start_IT(&A_TIMER_HANDLE, A_TIMER_CHANNEL);
+	}
+	else
+	{
+		HAL_TIM_PWM_Stop_IT(&A_TIMER_HANDLE, A_TIMER_CHANNEL);
 	}
 
 	if (pxPiece->xGoal.xEString.bActive)
 	{
 		printf("	E: %u, %u\r\n", pxPiece->xGoal.xEString.ucFingerOffset, Piece_usGetPitchTick(E_STRING, pxPiece->xGoal.xEString.ucFingerOffset));
+
+		E_TIMER_BASE->ARR = Piece_usGetPitchTick(E_STRING, pxPiece->xGoal.xEString.ucFingerOffset);
+		E_TIMER_HANDLE.Instance->CCR1 = E_TIMER_BASE->ARR/2;
+		HAL_TIM_PWM_Start_IT(&E_TIMER_HANDLE, E_TIMER_CHANNEL);
+	}
+	else
+	{
+		HAL_TIM_PWM_Stop_IT(&E_TIMER_HANDLE, E_TIMER_CHANNEL);
 	}
 }
 

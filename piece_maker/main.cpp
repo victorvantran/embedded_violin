@@ -4,6 +4,7 @@
 
 #include <fstream>
 
+#define COMPOSITION_SIZE			(uint32_t)566 //(uint32_t)2882400018
 
 
 enum Note
@@ -167,7 +168,17 @@ enum Note
 #define HEMIDEMISEMIQUAVER			(uint8_t)9
 #define SEMIHEMIDEMISEMIQUAVER		(uint8_t)10
 #define DEMISEMIHEMIDEMISEMIQUAVER	(uint8_t)11
-#define COMPOSITION_SIZE			(uint32_t)42 //(uint32_t)2882400018
+
+
+#define NOPELET			(uint8_t)0
+#define TRIPLET			(uint8_t)1
+#define QUINTUPLET		(uint8_t)2
+#define SEXTUPLET		(uint8_t)3
+#define SEPTUPLET		(uint8_t)4
+
+// Check this to signify another 16 bit command for n-plet
+#define CUSTOMPLET		(uint8_t)0x0F
+
 
 
 
@@ -423,31 +434,32 @@ public:
 	}
 
 
-	template<typename T1, typename ...T2Pack>
-	void vWriteFragment( T1 ucBeatValue, T2Pack... noteFragmentPack )
+	template<typename ...TPack>
+	void vWriteFragment(uint8_t ucTupletValue, uint8_t ucBeatValue, TPack... noteFragmentPack )
 	{
 		// Set the stage for fragment commands
-		xFragment.set( ucBeatValue, noteFragmentPack... );
+		xFragment.set( ((ucTupletValue << 4) | (ucBeatValue)), noteFragmentPack... );
 
 
 
 		// Write Play Command
 		// [!] Handle case of beat value = 0 and num fragments = 0 (rest!) on embedded application
-		uint8_t ucWriteBeatValue = this->xFragment.getBeatValue();
 		uint8_t ucWriteNumFragments = this->xFragment.getNoteFragmentIndex();
 		// [!] error for numFragments > 4
 		if ( ucWriteNumFragments > 4 )
 		{
 			std::cout << "ERROR: ucWriteNumFragments > 4" << std::endl;
 		}
-
-		uint8_t ucPlayCommand = ( COMMAND_PLAY_BIT << 7 ) | ( ucWriteBeatValue << 3 ) | ( ucWriteNumFragments << 0 );
+		uint8_t ucPlayCommand = ( COMMAND_PLAY_BIT << 7 ) | /*( ucWriteBeatValue << 3 ) MISCELLANEOUS FOR NOW |*/ ( ucWriteNumFragments << 0 );
 		//fwrite( &ucPlayCommand, sizeof( ucPlayCommand ), 1, this->pxOut );
 		xOut.write( ( const char* )&ucPlayCommand, sizeof( ucPlayCommand ) );
-        this->ulCompositionSize += sizeof( ucPlayCommand );
-
-
-
+		this->ulCompositionSize += sizeof( ucPlayCommand );
+		
+		
+		// Write Beat value
+		uint8_t ucWriteBeatValue = this->xFragment.getBeatValue();
+		xOut.write( ( const char* )&ucWriteBeatValue, sizeof( ucWriteBeatValue ) );
+        this->ulCompositionSize += sizeof( ucWriteBeatValue );
 
 		
 		// Write Fragments
@@ -455,10 +467,9 @@ public:
 		uint16_t usFragmentInformation = 0x0000;
 		NoteFragment* pxNoteFragments = this->xFragment.getNoteFragments();
 
-
 		if ( isRest )
 		{
-			std::cout << "REST COMMAND" << std::endl; // No need (just use information from write play command (stall for the beat value)
+			std::cout << "REST COMMAND" << std::endl; // No need to send a fragment (just use information from write play command (stall for the beat value)
 		}
 		else
 		{
@@ -466,7 +477,6 @@ public:
 			{
 				if ( pxNoteFragments[i].bActive )
 				{
-					//std::cout << (uint16_t)pxNoteFragments[i].ucBase  << std::endl;
 					usFragmentInformation = ( ( uint16_t )pxNoteFragments[i].ucBase << ( 8 + 6 ) ) | ( ( uint16_t )pxNoteFragments[i].ucOffset << 8 ) | ( ( uint16_t )pxNoteFragments[i].ucTechnique );
 					printf( "Fragment " BYTE2_TO_BINARY_PATTERN "\r\n", BYTE2_TO_BINARY( usFragmentInformation ) );
 
@@ -478,6 +488,7 @@ public:
 			}
 		}
 	}
+
 
 	void vWriteEndCommand()
 	{
@@ -503,27 +514,256 @@ int main()
 	xPiece.vWriteCompositionSize( COMPOSITION_SIZE );
 	xPiece.vWriteResetConfig();
 
-	xPiece.vWriteFragment( CROTCHET, NoteFragment( G, Ab3, 0 ) );
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Ab3, 0 ) );
 
-	xPiece.vWriteFragment( CROTCHET, NoteFragment( G, Db4, 0 ) );
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, Db4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Db4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Db4, 0 ) );
 
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, F4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, F4, 0 ) );
 
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, Eb4, 0 ) );
-	xPiece.vWriteFragment( SEMIQUAVER, NoteFragment( G, Eb4, 0 ) ); // 23
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Eb4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, Eb4, 0 ) );
 
-	xPiece.vWriteFragment( SEMIQUAVER, NoteFragment( G, Db4, 0 ) ); // 26 (1 + 2*1)
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, Db4, 0 ) );
 
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, Ab3, 0 ) ); // 29
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Ab3, 0 ) );
 
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, Bb3, 0 ) ); // 32
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Bb3, 0 ) );
 
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, C4, 0 ) ); // 35
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, C4, 0 ) );
 
-	xPiece.vWriteFragment( QUAVER, NoteFragment( G, Db4, 0 ) ); // 38
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Db4, 0 ) );
 
-	xPiece.vWriteFragment( CROTCHET, NoteFragment( G, Eb4, 0 ) ); // 41
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Eb4, 0 ) );
+
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, F4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, F4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Gb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, F4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Eb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Ab4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Gb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, F4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Eb4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, Eb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, Bb3, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Eb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Db4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Bb3, 0 ) );
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Bb3, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, C4, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Db4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Eb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, F4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, C5, 0 ) );
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, C5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, Bb4, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, G4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, G4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, A4, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, MINIM, NoteFragment( G, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, Bb4, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, C5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( G, F4, 0 ) );
+
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ) );
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( D, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( D, A4, 0 ) );
+	//
+
+	xPiece.vWriteFragment( NOPELET,	CROTCHET, NoteFragment( D, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET,	QUAVER, NoteFragment( D, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( D, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Bb4, 0 ) );
+	//
+
+	xPiece.vWriteFragment( TRIPLET, QUAVER, NoteFragment( D, C5, 0 ) );
+	xPiece.vWriteFragment( TRIPLET, QUAVER, NoteFragment( D, Eb5, 0 ) );
+	xPiece.vWriteFragment( TRIPLET, QUAVER, NoteFragment( D, Db5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, C5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Db5, 0 ) );
+	//
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( D, Eb5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( D, F5, 0 ) );
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, F5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Eb5, 0 ) );
+
+	//
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( D, Ab5, 0 ) );
+	
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab5, 0 ) );
+	
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( D, Bb5, 0 ) );
+	
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab5, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Bb4, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, C5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, D5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( D, Eb5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, F5, 0 ) );
+	//
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Gb5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab5, 0 ) );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( E, A5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( E, Bb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Gb5, 0 ), NoteFragment( E, Eb6, 0 ));
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( A, Gb5, 0 ), NoteFragment( E, Eb6, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( A, F5, 0 ), NoteFragment( E, Db6, 0 ));
+	//
+
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, F5, 0 ), NoteFragment( E, Db6, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Eb5, 0 ), NoteFragment( E, C6, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, B4, 0 ), NoteFragment( E, G5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Db5, 0 ), NoteFragment( E, Bb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, C5, 0 ), NoteFragment( E, Ab5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER );
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( D, Gb4, 0 ), NoteFragment( A, Eb5, 0 ));
+
+	//
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Bb4, 0 ), NoteFragment( A, Gb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ), NoteFragment( A, F5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, E4, 0 ), NoteFragment( A, C5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Gb4, 0 ), NoteFragment( A, Eb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( D, F4, 0 ), NoteFragment( A, Db5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ), NoteFragment( A, F5, 0 ));
+
+	//
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ), NoteFragment( A, F5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, G4, 0 ), NoteFragment( A, Eb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, C4, 0 ), NoteFragment( D, A4, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Eb4, 0 ), NoteFragment( D, C5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( G, Db4, 0 ), NoteFragment( D, Bb4, 0 ));
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( G, Db4, 0 ), NoteFragment( D, Bb4, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( D, F4, 0 ), NoteFragment( A, Db5, 0 ));
+
+	//
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ), NoteFragment( A, F5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, G4, 0 ), NoteFragment( A, Eb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Bb4, 0 ), NoteFragment( A, G5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, CROTCHET, NoteFragment( A, Eb5, 0 ), NoteFragment( E, C6, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Db5, 0 ), NoteFragment( E, Bb5, 0 ));
+
+	//
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Db5, 0 ), NoteFragment( E, Bb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, C5, 0 ), NoteFragment( E, Ab5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER );
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, F4, 0 ), NoteFragment( A, D5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Ab4, 0 ), NoteFragment( A, F5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( D, Gb4, 0 ), NoteFragment( A, Eb5, 0 ));
+
+	//
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Bb4, 0 ), NoteFragment( E, Gb5, 0 ));
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( A, Bb4, 0 ), NoteFragment( E, Gb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, SEMIQUAVER, NoteFragment( A, Db5, 0 ), NoteFragment( E, Bb5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, C5, 0 ), NoteFragment( E, Ab5, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Eb5, 0 ), NoteFragment( E, C6, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Ab5, 0 ), NoteFragment( E, F6, 0 ));
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( A, Gb5, 0 ), NoteFragment( E, Eb6, 0 ));
+	//
+
+	xPiece.vWriteFragment( NOPELET, QUAVER, NoteFragment( E, Ab5, 0 ));
+
+	//
 
 	xPiece.vWriteEndCommand();
 

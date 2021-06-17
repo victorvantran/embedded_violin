@@ -14,6 +14,39 @@
 #include <math.h>
 
 
+
+
+
+extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim15;
+extern TIM_HandleTypeDef htim16;
+extern TIM_HandleTypeDef htim17;
+
+
+#define G_TIMER_BASE TIM1
+#define D_TIMER_BASE TIM15
+#define A_TIMER_BASE TIM16
+#define E_TIMER_BASE TIM17
+
+
+#define G_TIMER_HANDLE htim1
+#define D_TIMER_HANDLE htim15
+#define A_TIMER_HANDLE htim16
+#define E_TIMER_HANDLE htim17
+
+
+#define G_TIMER_CHANNEL TIM_CHANNEL_1
+#define D_TIMER_CHANNEL TIM_CHANNEL_1
+#define A_TIMER_CHANNEL TIM_CHANNEL_1
+#define E_TIMER_CHANNEL TIM_CHANNEL_1
+
+
+
+
+
+
+
+
 #define MAX_PIECE_NAME_BYTE_SIZE 128
 #define MAX_COMPOSITION_BYTE_SIZE 32768
 
@@ -23,18 +56,50 @@
 
 
 
-#define LARGE 0
-#define LONG 1
-#define BREVE 2
-#define SEMIBREVE 3 // WHOLE NOTE
-#define MINIM 4
-#define CROTCHET 5 // QUARTER NOTE
-#define QUAVER 6
-#define SEMIQUAVER 7
-#define DEMISEMIQUAVER 8
-#define HEMIDEMISEMIQUAVER 9
-#define SEMIHEMIDEMISEMIQUAVER 10
-#define DEMISEMIHEMIDEMISEMIQUAVER 11
+#define LARGE 											0
+#define LONG 												1
+#define BREVE 											2
+#define SEMIBREVE 									3 // WHOLE NOTE
+#define MINIM 											4
+#define CROTCHET 										5 // QUARTER NOTE
+#define QUAVER 											6
+#define SEMIQUAVER 									7
+#define DEMISEMIQUAVER 							8
+#define HEMIDEMISEMIQUAVER					9
+#define SEMIHEMIDEMISEMIQUAVER 			10
+#define DEMISEMIHEMIDEMISEMIQUAVER	11
+
+#define LARGE_SCALE 											32.0f
+#define LONG_SCALE 												16.0f
+#define BREVE_SCALE 											8.0f
+#define SEMIBREVE_SCALE 									4.0f // WHOLE NOTE
+#define MINIM_SCALE 											2.0f
+#define CROTCHET_SCALE 										1.0f // QUARTER NOTE
+#define QUAVER_SCALE 											0.5f
+#define SEMIQUAVER_SCALE 									0.25f
+#define DEMISEMIQUAVER_SCALE 							0.125f
+#define HEMIDEMISEMIQUAVER_SCALE					0.0625f
+#define SEMIHEMIDEMISEMIQUAVER_SCALE 			0.03125f
+#define DEMISEMIHEMIDEMISEMIQUAVER_SCALE	0.015625f
+
+
+
+
+
+#define NOPELET			0
+#define TRIPLET			1
+#define QUINTUPLET	2
+#define SEXTUPLET		3
+#define SEPTUPLET		4
+
+	// [!] Need to figure out the scale for the subsequent tuplet
+#define NOPELET_SCALE			1.0f
+#define TRIPLET_SCALE			(2.0f/3.0f)
+#define QUINTUPLET_SCALE	1.0f
+#define SEXTUPLET_SCALE		1.0f
+#define SEPTUPLET_SCALE		1.0f
+
+
 
 
 #define G_STRING 0UL
@@ -60,8 +125,6 @@
 #define GET_PITCH_CHZ_TICK(f_chz) ((uint16_t)(round(PITCH_RESOLUTION/(f_chz/100.0))))
 
 
-
-extern TIM_HandleTypeDef htim1;
 
 
 
@@ -219,6 +282,7 @@ typedef struct
 {
 	uint32_t ulInstructionCounter;
 	uint8_t usCommand;
+	uint8_t usBeat;
 	uint16_t uPlay;
 } PieceInstructionHandle_t;
 
@@ -247,6 +311,12 @@ typedef struct
 
 
 
+typedef struct
+{
+	uint32_t ulTick;
+
+} PieceCaptureHandle_t;
+
 
 
 typedef struct
@@ -270,22 +340,13 @@ typedef struct
 
 typedef struct
 {
-	uint32_t ulTick;
-
-} PieceCaptureHandle_t;
-
-
-
-
-typedef struct
-{
 	// Information
 	PieceInstructionHandle_t xPieceInstruction;
 	PieceInformationHandle_t xPieceInformation;
 	PieceConfigurationHandle_t xPieceConfiguration;
 	PieceCompositionHandle_t xComposition;
-	PieceGoalHandle_t xGoal;
 	PieceCaptureHandle_t xCapture;
+	PieceGoalHandle_t xGoal;
 } PieceHandle_t;
 
 
@@ -320,11 +381,16 @@ void Piece_vCaptureFragment(PieceHandle_t *pxPiece, int32_t lMSPerDemisemi);
 /* Reset all note goal in preparation for setting the next goal */
 void Piece_vResetGoal(PieceHandle_t *pxPiece);
 
-/* Read and set individual note goal */
-void Piece_vSetNoteGoal(PieceHandle_t *pxPiece);
+/* Parse and set individual note goal */
+void Piece_vParseNoteGoal(PieceHandle_t *pxPiece);
 
 /* Read and set all notes goal */
-void Piece_vSetGoal(PieceHandle_t *pxPiece, uint8_t numNotes);
+void Piece_vParseGoal(PieceHandle_t *pxPiece, uint8_t numNotes);
+
+
+/* */
+uint8_t Piece_ucParseBeatValue(PieceHandle_t *pxPiece);
+
 
 /* Sets the goal and periodically captures the notes played for accuracy */
 void Piece_vPlayNotes(PieceHandle_t *pxPiece, uint8_t ucBeatValue, uint8_t ucNumNotes);
