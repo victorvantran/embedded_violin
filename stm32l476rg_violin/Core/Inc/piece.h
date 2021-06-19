@@ -23,12 +23,6 @@ extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim17;
 
 
-#define G_TIMER_BASE TIM1
-#define D_TIMER_BASE TIM15
-#define A_TIMER_BASE TIM16
-#define E_TIMER_BASE TIM17
-
-
 #define G_TIMER_HANDLE htim1
 #define D_TIMER_HANDLE htim15
 #define A_TIMER_HANDLE htim16

@@ -407,8 +407,8 @@ void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
 	{
 		printf("	G: %u, %u\r\n", pxPiece->xGoal.xGString.ucFingerOffset, Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset));
 
-		G_TIMER_BASE->ARR = Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
-		G_TIMER_HANDLE.Instance->CCR1 = G_TIMER_BASE->ARR/2;
+		G_TIMER_HANDLE.Instance->ARR = Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
+		G_TIMER_HANDLE.Instance->CCR1 = G_TIMER_HANDLE.Instance->ARR/2;
 		HAL_TIM_PWM_Start_IT(&G_TIMER_HANDLE, G_TIMER_CHANNEL);
 	}
 	else
@@ -420,8 +420,8 @@ void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
 	{
 		printf("	D: %u, %u\r\n", pxPiece->xGoal.xDString.ucFingerOffset, Piece_usGetPitchTick(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset));
 
-		D_TIMER_BASE->ARR = Piece_usGetPitchTick(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset);
-		D_TIMER_HANDLE.Instance->CCR1 = D_TIMER_BASE->ARR/2;
+		D_TIMER_HANDLE.Instance->ARR = Piece_usGetPitchTick(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset);
+		D_TIMER_HANDLE.Instance->CCR1 = D_TIMER_HANDLE.Instance->ARR/2;
 		HAL_TIM_PWM_Start_IT(&D_TIMER_HANDLE, D_TIMER_CHANNEL);
 	}
 	else
@@ -433,8 +433,8 @@ void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
 	{
 		printf("	A: %u, %u\r\n", pxPiece->xGoal.xAString.ucFingerOffset, Piece_usGetPitchTick(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset));
 
-		A_TIMER_BASE->ARR = Piece_usGetPitchTick(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset);
-		A_TIMER_HANDLE.Instance->CCR1 = A_TIMER_BASE->ARR/2;
+		A_TIMER_HANDLE.Instance->ARR = Piece_usGetPitchTick(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset);
+		A_TIMER_HANDLE.Instance->CCR1 = A_TIMER_HANDLE.Instance->ARR/2;
 		HAL_TIM_PWM_Start_IT(&A_TIMER_HANDLE, A_TIMER_CHANNEL);
 	}
 	else
@@ -446,8 +446,8 @@ void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
 	{
 		printf("	E: %u, %u\r\n", pxPiece->xGoal.xEString.ucFingerOffset, Piece_usGetPitchTick(E_STRING, pxPiece->xGoal.xEString.ucFingerOffset));
 
-		E_TIMER_BASE->ARR = Piece_usGetPitchTick(E_STRING, pxPiece->xGoal.xEString.ucFingerOffset);
-		E_TIMER_HANDLE.Instance->CCR1 = E_TIMER_BASE->ARR/2;
+		E_TIMER_HANDLE.Instance->ARR = Piece_usGetPitchTick(E_STRING, pxPiece->xGoal.xEString.ucFingerOffset);
+		E_TIMER_HANDLE.Instance->CCR1 = E_TIMER_HANDLE.Instance->ARR/2;
 		HAL_TIM_PWM_Start_IT(&E_TIMER_HANDLE, E_TIMER_CHANNEL);
 	}
 	else
