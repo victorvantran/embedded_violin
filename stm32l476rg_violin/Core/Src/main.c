@@ -1116,6 +1116,7 @@ void StartMainMenuTask(void *argument)
 
     //printf("Reading song\r\n");
     //WS2812B_vSend(&xWS2812B, 5, 255, 101);
+    /*
     WS2812B_vSend(&xWS2812B, 10, 0, 0);
 
     osDelay(1000);
@@ -1128,6 +1129,62 @@ void StartMainMenuTask(void *argument)
     WS2812B_vSend(&xWS2812B, 1, 1, 1);
 
     osDelay(1000);
+		*/
+
+
+    WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
+    WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
+    WS2812B_vSetLED(&xWS2812B, 31, 0, 0, 255);
+
+    WS2812B_vSetBrightness(&xWS2812B, 1);
+    WS2812B_vSend(&xWS2812B);
+    WS2812B_vResetLEDs(&xWS2812B);
+
+
+    //
+		WS2812B_vSetLED(&xWS2812B, 4, 0, 0, 255);
+		WS2812B_vSetLED(&xWS2812B, 5, 0, 255, 0);
+		WS2812B_vSetLED(&xWS2812B, 6, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 7, 255, 255, 255);
+		WS2812B_vSetBrightness(&xWS2812B, 1);
+		WS2812B_vSend2(&xWS2812B);
+    WS2812B_vResetLEDs(&xWS2812B);
+    //
+
+
+		osDelay(1000);
+
+    WS2812B_vResetLEDs(&xWS2812B);
+
+		WS2812B_vSetLED(&xWS2812B, 0, 12, 52, 64);
+		WS2812B_vSetLED(&xWS2812B, 1, 4, 235, 145);
+		WS2812B_vSetLED(&xWS2812B, 2, 120, 120, 25);
+    WS2812B_vSetLED(&xWS2812B, 30, 120, 29, 0);
+
+		WS2812B_vSetBrightness(&xWS2812B, 1);
+		WS2812B_vSend(&xWS2812B);
+    WS2812B_vResetLEDs(&xWS2812B);
+
+
+		WS2812B_vSetLED(&xWS2812B, 0, 0, 0, 100);
+		WS2812B_vSetLED(&xWS2812B, 1, 0, 100, 0);
+		WS2812B_vSetLED(&xWS2812B, 2, 100, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 3, 100, 100, 100);
+		WS2812B_vSetBrightness(&xWS2812B, 1);
+		WS2812B_vSend2(&xWS2812B);
+    WS2812B_vResetLEDs(&xWS2812B);
+    //
+
+
+
+
+
+
+
+
+    osDelay(1000);
+
 
 
 
@@ -1139,7 +1196,6 @@ void StartMainMenuTask(void *argument)
     printf("%lu\r\n", WS2812B_T1H_TICKS);
     printf("%lu\r\n", WS2812B_T1L_TICKS);
 
-    osDelay(1000);
 
 
 
