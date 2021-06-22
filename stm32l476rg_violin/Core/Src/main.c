@@ -147,6 +147,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -251,6 +252,38 @@ TickType_t xSynchWakeTime;
 
 
 
+
+
+
+
+
+
+
+// ADC
+#define ADC_CHANNEL_COUNT 4UL
+volatile uint32_t adcValue[ADC_CHANNEL_COUNT];
+
+
+
+/*
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	printf("HALF_DONE\r\n");
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	printf("DONE\r\n");
+	HAL_ADC_Stop_DMA(&hadc1);
+}
+*/
+
+
+
+
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -295,6 +328,10 @@ int main(void)
   MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
   WS2812B_vInit(&xWS2812B, &htim3, &htim8, &hdma_tim3_ch1_trig, &hdma_tim3_ch3, &hdma_tim3_ch4_up, &hdma_tim8_ch2);
+
+	//[!] Care for HAL_ADC_START_DMA sampling too fast due to small array for DMA (ex: 4 instead of 400. Reduce sampling time of ADC if such case or filter more samples)
+  HAL_ADC_Start_DMA(&hadc1, adcValue, ADC_CHANNEL_COUNT);
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -441,15 +478,15 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.NbrOfConversion = 4;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -467,10 +504,34 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Rank = ADC_REGULAR_RANK_4;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -999,6 +1060,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA1_Channel2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
@@ -1107,12 +1171,110 @@ void StartMainMenuTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 
+  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start_IT(&htim15, TIM_CHANNEL_1);
+
+
   /* USER CODE BEGIN StartMainMenuTask */
   /* Infinite loop */
   for(;;)
   {
   	printf("Main Menu\r\n");
-    osDelay(10);
+    //HAL_ADC_Start_DMA(&hadc1, adcValue, 4);
+  	//osDelay(100);
+    //HAL_ADC_Stop_DMA(&hadc1);
+
+  	printf("ADC0: %lu\r\n", adcValue[0]);
+  	printf("ADC1: %lu\r\n", adcValue[1]);
+  	//printf("ADC2: %lu\r\n", adcValue[2]);
+  	//printf("ADC3: %lu\r\n", adcValue[3]);
+
+		htim1.Instance->ARR = ((adcValue[0] > 15) ? adcValue[0] * 16 : 1);
+		htim1.Instance->CCR1 = htim1.Instance->ARR/2;
+
+		htim15.Instance->ARR = ((adcValue[1] > 15) ? adcValue[1] * 16 : 1);
+		htim15.Instance->CCR1 = htim15.Instance->ARR/2;
+
+  	//osDelay(100);
+
+
+
+
+
+
+    /*
+      WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
+      WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
+      WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
+      WS2812B_vSetLED(&xWS2812B, 31, 0, 0, 255);
+
+      WS2812B_vSetBrightness(&xWS2812B, 1);
+      WS2812B_vSend(&xWS2812B);
+      WS2812B_vResetLEDs(&xWS2812B);
+
+
+      //
+  		WS2812B_vSetLED(&xWS2812B, 4, 0, 0, 255);
+  		WS2812B_vSetLED(&xWS2812B, 5, 0, 255, 0);
+  		WS2812B_vSetLED(&xWS2812B, 6, 255, 0, 0);
+      WS2812B_vSetLED(&xWS2812B, 7, 255, 255, 255);
+  		WS2812B_vSetBrightness(&xWS2812B, 1);
+  		WS2812B_vSend2(&xWS2812B);
+      WS2812B_vResetLEDs(&xWS2812B);
+      //
+
+
+  		osDelay(1000);
+
+      WS2812B_vResetLEDs(&xWS2812B);
+
+  		WS2812B_vSetLED(&xWS2812B, 0, 12, 52, 64);
+  		WS2812B_vSetLED(&xWS2812B, 1, 4, 235, 145);
+  		WS2812B_vSetLED(&xWS2812B, 2, 120, 120, 25);
+      WS2812B_vSetLED(&xWS2812B, 30, 120, 29, 0);
+
+  		WS2812B_vSetBrightness(&xWS2812B, 1);
+  		WS2812B_vSend(&xWS2812B);
+      WS2812B_vResetLEDs(&xWS2812B);
+
+
+  		WS2812B_vSetLED(&xWS2812B, 0, 0, 0, 100);
+  		WS2812B_vSetLED(&xWS2812B, 1, 0, 100, 0);
+  		WS2812B_vSetLED(&xWS2812B, 2, 100, 0, 0);
+      WS2812B_vSetLED(&xWS2812B, 3, 100, 100, 100);
+  		WS2812B_vSetBrightness(&xWS2812B, 1);
+  		WS2812B_vSend2(&xWS2812B);
+      WS2812B_vResetLEDs(&xWS2812B);
+      //
+
+
+
+
+
+
+
+
+      osDelay(1000);
+
+
+
+
+      printf("%lu\r\n", WS2812B_ARR);
+
+
+      printf("%lu\r\n", WS2812B_T0H_TICKS);
+      printf("%lu\r\n", WS2812B_T0L_TICKS);
+      printf("%lu\r\n", WS2812B_T1H_TICKS);
+      printf("%lu\r\n", WS2812B_T1L_TICKS);
+      */
+
+
+
+
+
+
+
+
 
     //printf("Reading song\r\n");
     //WS2812B_vSend(&xWS2812B, 5, 255, 101);
@@ -1129,77 +1291,12 @@ void StartMainMenuTask(void *argument)
     WS2812B_vSend(&xWS2812B, 1, 1, 1);
 
     osDelay(1000);
-		*/
-
-
-    WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
-    WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
-    WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
-    WS2812B_vSetLED(&xWS2812B, 31, 0, 0, 255);
-
-    WS2812B_vSetBrightness(&xWS2812B, 1);
-    WS2812B_vSend(&xWS2812B);
-    WS2812B_vResetLEDs(&xWS2812B);
-
-
-    //
-		WS2812B_vSetLED(&xWS2812B, 4, 0, 0, 255);
-		WS2812B_vSetLED(&xWS2812B, 5, 0, 255, 0);
-		WS2812B_vSetLED(&xWS2812B, 6, 255, 0, 0);
-    WS2812B_vSetLED(&xWS2812B, 7, 255, 255, 255);
-		WS2812B_vSetBrightness(&xWS2812B, 1);
-		WS2812B_vSend2(&xWS2812B);
-    WS2812B_vResetLEDs(&xWS2812B);
-    //
-
-
-		osDelay(1000);
-
-    WS2812B_vResetLEDs(&xWS2812B);
-
-		WS2812B_vSetLED(&xWS2812B, 0, 12, 52, 64);
-		WS2812B_vSetLED(&xWS2812B, 1, 4, 235, 145);
-		WS2812B_vSetLED(&xWS2812B, 2, 120, 120, 25);
-    WS2812B_vSetLED(&xWS2812B, 30, 120, 29, 0);
-
-		WS2812B_vSetBrightness(&xWS2812B, 1);
-		WS2812B_vSend(&xWS2812B);
-    WS2812B_vResetLEDs(&xWS2812B);
-
-
-		WS2812B_vSetLED(&xWS2812B, 0, 0, 0, 100);
-		WS2812B_vSetLED(&xWS2812B, 1, 0, 100, 0);
-		WS2812B_vSetLED(&xWS2812B, 2, 100, 0, 0);
-    WS2812B_vSetLED(&xWS2812B, 3, 100, 100, 100);
-		WS2812B_vSetBrightness(&xWS2812B, 1);
-		WS2812B_vSend2(&xWS2812B);
-    WS2812B_vResetLEDs(&xWS2812B);
-    //
 
 
 
 
 
 
-
-
-    osDelay(1000);
-
-
-
-
-    printf("%lu\r\n", WS2812B_ARR);
-
-
-    printf("%lu\r\n", WS2812B_T0H_TICKS);
-    printf("%lu\r\n", WS2812B_T0L_TICKS);
-    printf("%lu\r\n", WS2812B_T1H_TICKS);
-    printf("%lu\r\n", WS2812B_T1L_TICKS);
-
-
-
-
-    /*
     // Mount
 		fres = f_mount(&fs, "", 0);
 		if (fres == FR_OK) {
