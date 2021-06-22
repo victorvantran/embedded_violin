@@ -2440,8 +2440,6 @@ Connection ~ 29100 6350
 Connection ~ 31200 6350
 Wire Wire Line
 	31200 6350 31200 6400
-Wire Wire Line
-	29400 4100 31200 4100
 Connection ~ 29400 4100
 Wire Wire Line
 	31200 4100 31200 6350
@@ -3381,48 +3379,70 @@ Wire Wire Line
 	32500 8400 32500 7800
 Wire Wire Line
 	32500 7800 32850 7800
+Wire Wire Line
+	29400 4100 29850 4100
 $Comp
-L Mechanical:MountingHole H1
-U 1 1 6184DABC
-P 36650 1550
-F 0 "H1" H 36750 1596 50  0000 L CNN
-F 1 "MountingHole" H 36750 1505 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3" H 36650 1550 50  0001 C CNN
-F 3 "~" H 36650 1550 50  0001 C CNN
-	1    36650 1550
+L Mechanical:MountingHole_Pad H2
+U 1 1 60EB64CB
+P 30300 3000
+F 0 "H2" H 30400 3049 50  0000 L CNN
+F 1 "MountingHole_Pad" H 30400 2958 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 30300 3000 50  0001 C CNN
+F 3 "~" H 30300 3000 50  0001 C CNN
+	1    30300 3000
 	1    0    0    -1  
 $EndComp
 $Comp
-L Mechanical:MountingHole H3
-U 1 1 61DD112F
-P 36650 1850
-F 0 "H3" H 36750 1896 50  0000 L CNN
-F 1 "MountingHole" H 36750 1805 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3" H 36650 1850 50  0001 C CNN
-F 3 "~" H 36650 1850 50  0001 C CNN
-	1    36650 1850
+L Mechanical:MountingHole_Pad H3
+U 1 1 6104C008
+P 30700 3000
+F 0 "H3" H 30800 3049 50  0000 L CNN
+F 1 "MountingHole_Pad" H 30800 2958 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 30700 3000 50  0001 C CNN
+F 3 "~" H 30700 3000 50  0001 C CNN
+	1    30700 3000
 	1    0    0    -1  
 $EndComp
 $Comp
-L Mechanical:MountingHole H2
-U 1 1 61E9A2F3
-P 37500 1550
-F 0 "H2" H 37600 1596 50  0000 L CNN
-F 1 "MountingHole" H 37600 1505 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3" H 37500 1550 50  0001 C CNN
-F 3 "~" H 37500 1550 50  0001 C CNN
-	1    37500 1550
+L Mechanical:MountingHole_Pad H4
+U 1 1 61114F2B
+P 31100 3000
+F 0 "H4" H 31200 3049 50  0000 L CNN
+F 1 "MountingHole_Pad" H 31200 2958 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 31100 3000 50  0001 C CNN
+F 3 "~" H 31100 3000 50  0001 C CNN
+	1    31100 3000
 	1    0    0    -1  
 $EndComp
 $Comp
-L Mechanical:MountingHole H4
-U 1 1 61F6323C
-P 37500 1850
-F 0 "H4" H 37600 1896 50  0000 L CNN
-F 1 "MountingHole" H 37600 1805 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3" H 37500 1850 50  0001 C CNN
-F 3 "~" H 37500 1850 50  0001 C CNN
-	1    37500 1850
+L Mechanical:MountingHole_Pad H1
+U 1 1 611DDF3C
+P 29850 3000
+F 0 "H1" H 29950 3049 50  0000 L CNN
+F 1 "MountingHole_Pad" H 29950 2958 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 29850 3000 50  0001 C CNN
+F 3 "~" H 29850 3000 50  0001 C CNN
+	1    29850 3000
 	1    0    0    -1  
 $EndComp
+Wire Wire Line
+	29850 3100 29850 4100
+Connection ~ 29850 4100
+Wire Wire Line
+	29850 4100 30300 4100
+Wire Wire Line
+	30300 3100 30300 4100
+Connection ~ 30300 4100
+Wire Wire Line
+	30300 4100 30700 4100
+Wire Wire Line
+	30700 3100 30700 4100
+Connection ~ 30700 4100
+Wire Wire Line
+	30700 4100 31100 4100
+Wire Wire Line
+	31100 3100 31100 4100
+Connection ~ 31100 4100
+Wire Wire Line
+	31100 4100 31200 4100
 $EndSCHEMATC

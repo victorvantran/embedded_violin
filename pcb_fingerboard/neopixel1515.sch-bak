@@ -2440,8 +2440,6 @@ Connection ~ 29100 6350
 Connection ~ 31200 6350
 Wire Wire Line
 	31200 6350 31200 6400
-Wire Wire Line
-	29400 4100 31200 4100
 Connection ~ 29400 4100
 Wire Wire Line
 	31200 4100 31200 6350
@@ -3387,7 +3385,7 @@ U 1 1 6184DABC
 P 36650 1550
 F 0 "H1" H 36750 1596 50  0000 L CNN
 F 1 "MountingHole" H 36750 1505 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3mm" H 36650 1550 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 36650 1550 50  0001 C CNN
 F 3 "~" H 36650 1550 50  0001 C CNN
 	1    36650 1550
 	1    0    0    -1  
@@ -3398,7 +3396,7 @@ U 1 1 61DD112F
 P 36650 1850
 F 0 "H3" H 36750 1896 50  0000 L CNN
 F 1 "MountingHole" H 36750 1805 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3mm" H 36650 1850 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 36650 1850 50  0001 C CNN
 F 3 "~" H 36650 1850 50  0001 C CNN
 	1    36650 1850
 	1    0    0    -1  
@@ -3409,7 +3407,7 @@ U 1 1 61E9A2F3
 P 37500 1550
 F 0 "H2" H 37600 1596 50  0000 L CNN
 F 1 "MountingHole" H 37600 1505 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3mm" H 37500 1550 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 37500 1550 50  0001 C CNN
 F 3 "~" H 37500 1550 50  0001 C CNN
 	1    37500 1550
 	1    0    0    -1  
@@ -3420,9 +3418,11 @@ U 1 1 61F6323C
 P 37500 1850
 F 0 "H4" H 37600 1896 50  0000 L CNN
 F 1 "MountingHole" H 37600 1805 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3mm" H 37500 1850 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 37500 1850 50  0001 C CNN
 F 3 "~" H 37500 1850 50  0001 C CNN
 	1    37500 1850
 	1    0    0    -1  
 $EndComp
+Wire Wire Line
+	29400 4100 31200 4100
 $EndSCHEMATC
