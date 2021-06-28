@@ -332,6 +332,9 @@ int main(void)
 	//[!] Care for HAL_ADC_START_DMA sampling too fast due to small array for DMA (ex: 4 instead of 400. Reduce sampling time of ADC if such case or filter more samples)
   HAL_ADC_Start_DMA(&hadc1, adcValue, ADC_CHANNEL_COUNT);
 
+  //HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
+  //HAL_TIM_PWM_Start_IT(&htim15, TIM_CHANNEL_1);
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -403,11 +406,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 1;
   RCC_OscInitStruct.PLL.PLLN = 10;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
@@ -435,7 +437,7 @@ void SystemClock_Config(void)
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
-  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSI;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSE;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
   PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
   PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
@@ -1171,8 +1173,7 @@ void StartMainMenuTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 
-  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start_IT(&htim15, TIM_CHANNEL_1);
+
 
 
   /* USER CODE BEGIN StartMainMenuTask */
@@ -1184,6 +1185,8 @@ void StartMainMenuTask(void *argument)
   	//osDelay(100);
     //HAL_ADC_Stop_DMA(&hadc1);
 
+
+  	/*
   	printf("ADC0: %lu\r\n", adcValue[0]);
   	printf("ADC1: %lu\r\n", adcValue[1]);
   	//printf("ADC2: %lu\r\n", adcValue[2]);
@@ -1196,13 +1199,13 @@ void StartMainMenuTask(void *argument)
 		htim15.Instance->CCR1 = htim15.Instance->ARR/2;
 
   	//osDelay(100);
+		*/
 
 
 
 
 
-
-    /*
+  		/*
       WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
       WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
       WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
@@ -1211,17 +1214,6 @@ void StartMainMenuTask(void *argument)
       WS2812B_vSetBrightness(&xWS2812B, 1);
       WS2812B_vSend(&xWS2812B);
       WS2812B_vResetLEDs(&xWS2812B);
-
-
-      //
-  		WS2812B_vSetLED(&xWS2812B, 4, 0, 0, 255);
-  		WS2812B_vSetLED(&xWS2812B, 5, 0, 255, 0);
-  		WS2812B_vSetLED(&xWS2812B, 6, 255, 0, 0);
-      WS2812B_vSetLED(&xWS2812B, 7, 255, 255, 255);
-  		WS2812B_vSetBrightness(&xWS2812B, 1);
-  		WS2812B_vSend2(&xWS2812B);
-      WS2812B_vResetLEDs(&xWS2812B);
-      //
 
 
   		osDelay(1000);
@@ -1237,31 +1229,10 @@ void StartMainMenuTask(void *argument)
   		WS2812B_vSend(&xWS2812B);
       WS2812B_vResetLEDs(&xWS2812B);
 
-
-  		WS2812B_vSetLED(&xWS2812B, 0, 0, 0, 100);
-  		WS2812B_vSetLED(&xWS2812B, 1, 0, 100, 0);
-  		WS2812B_vSetLED(&xWS2812B, 2, 100, 0, 0);
-      WS2812B_vSetLED(&xWS2812B, 3, 100, 100, 100);
-  		WS2812B_vSetBrightness(&xWS2812B, 1);
-  		WS2812B_vSend2(&xWS2812B);
-      WS2812B_vResetLEDs(&xWS2812B);
-      //
-
-
-
-
-
-
-
-
       osDelay(1000);
 
 
-
-
       printf("%lu\r\n", WS2812B_ARR);
-
-
       printf("%lu\r\n", WS2812B_T0H_TICKS);
       printf("%lu\r\n", WS2812B_T0L_TICKS);
       printf("%lu\r\n", WS2812B_T1H_TICKS);
@@ -1275,26 +1246,7 @@ void StartMainMenuTask(void *argument)
 
 
 
-
-    //printf("Reading song\r\n");
-    //WS2812B_vSend(&xWS2812B, 5, 255, 101);
-    /*
-    WS2812B_vSend(&xWS2812B, 10, 0, 0);
-
-    osDelay(1000);
-    WS2812B_vSend(&xWS2812B, 0, 10, 0);
-
-    osDelay(1000);
-    WS2812B_vSend(&xWS2812B, 0, 0, 10);
-
-    osDelay(1000);
-    WS2812B_vSend(&xWS2812B, 1, 1, 1);
-
-    osDelay(1000);
-
-
-
-
+    printf("Reading song\r\n");
 
 
     // Mount
@@ -1357,7 +1309,7 @@ void StartMainMenuTask(void *argument)
 		// WAIT EVENT SYNCHRONIZE?
 
     osDelay(7000000000);
-    */
+
 
 
   }

@@ -108,6 +108,11 @@ extern TIM_HandleTypeDef htim17;
 #define E_STRING_PITCH_TICK_OFFSET 30
 
 
+#define G_STRING_FINGER_OFFSET 29
+#define D_STRING_FINGER_OFFSET 30
+#define A_STRING_FINGER_OFFSET 89
+#define E_STRING_FINGER_OFFSET 90
+
 
 
 
@@ -255,7 +260,12 @@ typedef enum
 
 
 #define NUM_PITCH_TICKS 72
-uint16_t pusPitchTickMap[NUM_PITCH_TICKS];
+
+uint16_t pusNoteToPitchMap[NUM_PITCH_TICKS];
+
+
+#define NUM_FINGERINGS 120
+uint8_t pucStringNoteToFingerMap[NUM_FINGERINGS];
 
 
 
@@ -364,6 +374,10 @@ uint8_t bIsPlayCommand(uint8_t usCommand);
 
 /* Get the tick pitch of a note based on string a finger/offset */
 uint16_t Piece_usGetPitchTick(uint8_t ucString, uint8_t ucOffset);
+
+/* Get the fingering index of a note mapped to the fingerboard based on string a finger/offset */
+uint8_t Piece_ucGetFingeringIndex(uint8_t ucString, uint8_t ucOffset);
+
 
 /* Based on the current performance and goal, update scores */
 void Piece_vUpdatePerformanceStats(PieceHandle_t *pxPiece);

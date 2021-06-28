@@ -9,7 +9,7 @@
 
 
 
-uint16_t pusPitchTickMap[NUM_PITCH_TICKS] = {
+uint16_t pusNoteToPitchMap[NUM_PITCH_TICKS] = {
 		GET_PITCH_CHZ_TICK(G3_CHZ), 	GET_PITCH_CHZ_TICK(Gs3_CHZ),		GET_PITCH_CHZ_TICK(Ab3_CHZ),		GET_PITCH_CHZ_TICK(A3_CHZ),		GET_PITCH_CHZ_TICK(As3_CHZ),
 		GET_PITCH_CHZ_TICK(Bb3_CHZ),		GET_PITCH_CHZ_TICK(B3_CHZ),		GET_PITCH_CHZ_TICK(C4_CHZ),		GET_PITCH_CHZ_TICK(Cs4_CHZ),		GET_PITCH_CHZ_TICK(Db4_CHZ),
 		GET_PITCH_CHZ_TICK(D4_CHZ),		GET_PITCH_CHZ_TICK(Ds4_CHZ),		GET_PITCH_CHZ_TICK(Eb4_CHZ),		GET_PITCH_CHZ_TICK(E4_CHZ),		GET_PITCH_CHZ_TICK(F4_CHZ),
@@ -26,6 +26,21 @@ uint16_t pusPitchTickMap[NUM_PITCH_TICKS] = {
 		GET_PITCH_CHZ_TICK(F7_CHZ),		GET_PITCH_CHZ_TICK(Fs7_CHZ),		GET_PITCH_CHZ_TICK(Gb7_CHZ),		GET_PITCH_CHZ_TICK(G7_CHZ),		GET_PITCH_CHZ_TICK(Gs7_CHZ),
 		GET_PITCH_CHZ_TICK(Ab7_CHZ),		GET_PITCH_CHZ_TICK(A7_CHZ)
 };
+
+
+
+// [!] Check if base note and actual note difference <= 29. [You are not allowed to play an A7 on the G string]
+
+uint8_t pucStringNoteToFingerMap[NUM_FINGERINGS] = {
+		0,	1,1,	2,	3,3,	4,	5,	6,6,	7,	8,8,	9,	10,	11,11,	12,	13,13,	14,	15,15,	16,	17,	18,18,	19,	20,20,	21,	22,	23,23,	24,	25,25,	26,	27,27,	28,	29,
+		0,	1,1,	2,	3,	4,4,	5,	6,6,	7,	8,8,	9,	10,	11,11,	12,	13,13,	14,	15,	16,16,	17,	18,18,	19,	20,20,	21,	22,	23,23,	24,	25,25,	26,	27,	28,28,	29,
+		0,	1,1,	2,	3,	4,4,	5,	6,6,	7,	8,	9,9,	10,	11,11,	12,	13,13,	14,	15,	16,16,	17,	18,18,	19,	20,	21,21,	22, 23,23,	24,	25,25,	26,	27,	28,28,	29,
+		0,	1,	2,2,	3,	4,4,	5,	6,6,	7,	8,	9,9,	10,	11,11,	12,	13,	14,14,	15, 16,16,	17,	18,18,	19,	20,	21,21,	22, 23,23,	24,	25,	26,26,	27,	28,28,	29
+};
+
+
+
+
 
 
 
@@ -387,7 +402,38 @@ uint16_t Piece_usGetPitchTick(uint8_t ucString, uint8_t ucOffset)
 	ucPitchTickIndex += ucOffset;
 	ucPitchTickIndex = (ucPitchTickIndex < NUM_PITCH_TICKS) ? ucPitchTickIndex : NUM_PITCH_TICKS - 1;
 
-	return pusPitchTickMap[ucPitchTickIndex];
+	return pusNoteToPitchMap[ucPitchTickIndex];
+}
+
+
+
+uint8_t Piece_ucGetFingeringIndex(uint8_t ucString, uint8_t ucOffset)
+{
+	uint8_t ucFingeringIndex;
+
+	switch (ucString)
+	{
+	case G_STRING:
+		ucFingeringIndex = G_STRING_FINGER_OFFSET;
+		break;
+	case D_STRING:
+		ucFingeringIndex = D_STRING_FINGER_OFFSET;
+		break;
+	case A_STRING:
+		ucFingeringIndex = A_STRING_FINGER_OFFSET;
+		break;
+	case E_STRING:
+		ucFingeringIndex = E_STRING_FINGER_OFFSET;
+		break;
+	default:
+		ucFingeringIndex = G_STRING_FINGER_OFFSET;
+		break;
+	}
+
+	ucPitchTickIndex += ucOffset;
+	ucPitchTickIndex = (ucPitchTickIndex < NUM_PITCH_TICKS) ? ucPitchTickIndex : NUM_PITCH_TICKS - 1;
+
+	return pusNoteToPitchMap[ucPitchTickIndex];
 }
 
 
