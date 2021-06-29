@@ -264,9 +264,20 @@ typedef enum
 uint16_t pusNoteToPitchMap[NUM_PITCH_TICKS];
 
 
+#define NUM_STRINGS 4
 #define NUM_FINGERINGS 120
-uint8_t pucStringNoteToFingerMap[NUM_FINGERINGS];
 
+typedef struct
+{
+	uint8_t ucG;
+	uint8_t ucD;
+	uint8_t ucA;
+	uint8_t ucE;
+} FingerOffset_t;
+
+//uint8_t pucStringNoteToFingerMap[NUM_FINGERINGS];
+
+FingerOffset_t pucStringNoteToFingerMap[NUM_FINGERINGS/NUM_STRINGS];
 
 
 
@@ -377,6 +388,8 @@ uint16_t Piece_usGetPitchTick(uint8_t ucString, uint8_t ucOffset);
 
 /* Get the fingering index of a note mapped to the fingerboard based on string a finger/offset */
 uint8_t Piece_ucGetFingeringIndex(uint8_t ucString, uint8_t ucOffset);
+
+void Piece_vSetFingerboardLight(PieceHandle_t *pxPiece);
 
 
 /* Based on the current performance and goal, update scores */
