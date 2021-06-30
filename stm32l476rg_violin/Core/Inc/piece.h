@@ -389,6 +389,7 @@ uint16_t Piece_usGetPitchTick(uint8_t ucString, uint8_t ucOffset);
 /* Get the fingering index of a note mapped to the fingerboard based on string a finger/offset */
 uint8_t Piece_ucGetFingeringIndex(uint8_t ucString, uint8_t ucOffset);
 
+/* Set the led(s) on the fingerboard to represent which finger placement is correct */
 void Piece_vSetFingerboardLight(PieceHandle_t *pxPiece);
 
 
@@ -409,7 +410,7 @@ void Piece_vParseNoteGoal(PieceHandle_t *pxPiece);
 void Piece_vParseGoal(PieceHandle_t *pxPiece, uint8_t numNotes);
 
 
-/* */
+/* Read the beat value of a given instruction */
 uint8_t Piece_ucParseBeatValue(PieceHandle_t *pxPiece);
 
 

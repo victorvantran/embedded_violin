@@ -451,6 +451,13 @@ uint8_t Piece_ucGetFingeringIndex(uint8_t ucString, uint8_t ucOffset)
 
 
 
+void Piece_vSetFingerboardLight(PieceHandle_t *pxPiece)
+{
+
+}
+
+
+
 void Piece_Debug_vPrintPointer(PieceHandle_t *pxPiece, FIL *pFil)
 {
 	printf("Pointer: %u\r\n", f_tell(pFil));
