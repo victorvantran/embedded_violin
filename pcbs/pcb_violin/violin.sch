@@ -1267,4 +1267,15 @@ Text GLabel 5800 4200 2    50   Input ~ 0
 I2C1_SCL
 Text GLabel 5800 4100 2    50   Input ~ 0
 I2C1_SDA
+$Comp
+L Regulator_Linear:MAX604 U?
+U 1 1 60DEFDA8
+P 22050 -2050
+F 0 "U?" H 22050 -1708 50  0000 C CNN
+F 1 "MAX604" H 22050 -1799 50  0000 C CNN
+F 2 "" H 22050 -1725 50  0001 C CIN
+F 3 "http://datasheets.maximintegrated.com/en/ds/MAX603-MAX604.pdf" H 22050 -2100 50  0001 C CNN
+	1    22050 -2050
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
