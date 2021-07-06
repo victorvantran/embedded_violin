@@ -28,7 +28,7 @@
 #include <string.h>
 #include "fatfs_sd.h"
 #include "piece.h"
-#include "ws2812b.h"
+//#include "ws2812b.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -1202,8 +1202,17 @@ void StartMainMenuTask(void *argument)
 		*/
 
 
+  	/*
 
+    WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
+    WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
+    WS2812B_vSetLED(&xWS2812B, 31, 0, 0, 255);
 
+    WS2812B_vSetBrightness(&xWS2812B, 1);
+    WS2812B_vSend(&xWS2812B);
+    WS2812B_vResetLEDs(&xWS2812B);
+		*/
 
   		/*
       WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);

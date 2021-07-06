@@ -49,7 +49,8 @@ Core/Src/piece.o: ../Core/Src/piece.c ../Core/Inc/piece.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
  ../Middlewares/Third_Party/FatFs/src/ff_gen_drv.h \
  ../Middlewares/Third_Party/FatFs/src/diskio.h \
- ../Middlewares/Third_Party/FatFs/src/ff.h ../FATFS/Target/user_diskio.h
+ ../Middlewares/Third_Party/FatFs/src/ff.h ../FATFS/Target/user_diskio.h \
+ ../Core/Inc/ws2812b.h
 
 ../Core/Inc/piece.h:
 
@@ -162,3 +163,5 @@ Core/Src/piece.o: ../Core/Src/piece.c ../Core/Inc/piece.h \
 ../Middlewares/Third_Party/FatFs/src/ff.h:
 
 ../FATFS/Target/user_diskio.h:
+
+../Core/Inc/ws2812b.h:

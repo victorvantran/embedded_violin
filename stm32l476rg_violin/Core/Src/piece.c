@@ -41,7 +41,7 @@ uint8_t pucStringNoteToFingerMap[NUM_FINGERINGS] = {
 */
 
 
-FingerOffset_t pucStringNoteToFingerMap[NUM_FINGERINGS/NUM_STRINGS] =
+FingerOffset_t pucStringNoteToFingerMap[NUM_NOTES_PER_STRING] =
 {
 		{0, 0, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 2}, {2, 2, 2, 2}, {3, 3, 3, 3}, {3, 4, 4, 4},
 		{4, 4, 4, 4}, {5, 5, 5, 5}, {6, 6, 6, 6}, {6, 6, 6, 6}, {7, 7, 7, 7}, {8, 8, 8, 8},
@@ -49,7 +49,7 @@ FingerOffset_t pucStringNoteToFingerMap[NUM_FINGERINGS/NUM_STRINGS] =
 		{13, 13, 13, 13}, {13, 13, 13, 14}, {14, 14, 14, 14}, {15, 15, 15, 15}, {15, 16, 16, 16}, {16, 16, 16, 16},
 		{17, 17, 17, 17}, {18, 18, 18, 18}, {18, 18, 18, 18}, {19, 19, 19, 19}, {20, 20, 20, 20}, {20, 20, 21, 21},
 		{21, 21, 21, 21}, {22, 22, 22, 22}, {23, 23, 23, 23}, {23, 23, 23, 23}, {24, 24, 24, 24}, {25, 25, 25, 25},
-		{25, 25, 25, 26}, {26, 26, 26, 26}, {27, 27, 27, 27}, {27, 28, 28, 28}, {28, 28, 28, 28}, {29, 29, 29, 29},
+		{25, 25, 25, 26}, {26, 26, 26, 26}, {27, 27, 27, 27}, {27, 28, 28, 28}, {28, 28, 28, 28}, {29, 29, 29, 29}
 };
 
 
@@ -453,7 +453,25 @@ uint8_t Piece_ucGetFingeringIndex(uint8_t ucString, uint8_t ucOffset)
 
 void Piece_vSetFingerboardLight(PieceHandle_t *pxPiece)
 {
+	if (pxPiece->xGoal.xGString.bActive)
+	{
+		uint8_t ucGFingeringOffset = Piece_ucGetFingeringIndex(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
+	}
 
+	if (pxPiece->xGoal.xDString.bActive)
+	{
+		uint8_t ucDFingeringOffset = Piece_ucGetFingeringIndex(D_STRING, pxPiece->xGoal.xDString.ucFingerOffset);
+	}
+
+	if (pxPiece->xGoal.xAString.bActive)
+	{
+		uint8_t ucAFingeringOffset = Piece_ucGetFingeringIndex(A_STRING, pxPiece->xGoal.xAString.ucFingerOffset);
+	}
+
+	if (pxPiece->xGoal.xEString.bActive)
+	{
+		uint8_t ucEFingeringOffset = Piece_ucGetFingeringIndex(E_STRING, pxPiece->xGoal.xEString.ucFingerOffset);
+	}
 }
 
 
@@ -463,6 +481,9 @@ void Piece_Debug_vPrintPointer(PieceHandle_t *pxPiece, FIL *pFil)
 	printf("Pointer: %u\r\n", f_tell(pFil));
 }
 
+
+
+extern WS2812BHandle_t xWS2812B;
 
 
 void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
@@ -476,6 +497,14 @@ void Piece_Debug_vPrintGoal(PieceHandle_t *pxPiece)
 		G_TIMER_HANDLE.Instance->ARR = Piece_usGetPitchTick(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
 		G_TIMER_HANDLE.Instance->CCR1 = G_TIMER_HANDLE.Instance->ARR/2;
 		HAL_TIM_PWM_Start_IT(&G_TIMER_HANDLE, G_TIMER_CHANNEL);
+
+
+		uint8_t ucGFingeringOffset = Piece_ucGetFingeringIndex(G_STRING, pxPiece->xGoal.xGString.ucFingerOffset);
+		WS2812B_vSetLED(&xWS2812B, ucGFingeringOffset, 255, 0, 0);
+    WS2812B_vSetBrightness(&xWS2812B, 1);
+    WS2812B_vSend(&xWS2812B);
+    WS2812B_vResetLEDs(&xWS2812B);
+
 	}
 	else
 	{

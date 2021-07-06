@@ -8,10 +8,11 @@
 #ifndef INC_PIECE_H_
 #define INC_PIECE_H_
 
-
-#include "fatfs.h"
 #include <stdint.h>
 #include <math.h>
+#include "fatfs.h"
+#include "ws2812b.h"
+
 
 
 
@@ -257,15 +258,12 @@ typedef enum
 } NoteFrequencyCHZ_t;
 
 
+#define NUM_STRINGS 4
+#define NUM_FINGERINGS 120
 
 
 #define NUM_PITCH_TICKS 72
-
 uint16_t pusNoteToPitchMap[NUM_PITCH_TICKS];
-
-
-#define NUM_STRINGS 4
-#define NUM_FINGERINGS 120
 
 typedef struct
 {
@@ -275,9 +273,8 @@ typedef struct
 	uint8_t ucE;
 } FingerOffset_t;
 
-//uint8_t pucStringNoteToFingerMap[NUM_FINGERINGS];
-
-FingerOffset_t pucStringNoteToFingerMap[NUM_FINGERINGS/NUM_STRINGS];
+#define NUM_NOTES_PER_STRING 42 // A#/Bb count as 2 notes
+FingerOffset_t pucStringNoteToFingerMap[NUM_NOTES_PER_STRING];
 
 
 
