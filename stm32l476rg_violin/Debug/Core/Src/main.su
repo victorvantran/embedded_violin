@@ -14,10 +14,10 @@ main.c:962:13:MX_TIM17_Init	80	static
 main.c:1024:13:MX_USART2_UART_Init	8	static
 main.c:1057:13:MX_DMA_Init	16	static
 main.c:1088:13:MX_GPIO_Init	48	static
-main.c:1143:7:movingAverage	24	static
-main.c:1149:9:getPeriod	24	static
-main.c:1172:6:StartMainMenuTask	16	static
-main.c:1336:6:StartPlayTickTask	24	static
-main.c:1367:6:StartPlayState	24	static
-main.c:1392:6:HAL_TIM_PeriodElapsedCallback	16	static
-main.c:1408:6:Error_Handler	4	static,ignoring_inline_asm
+main.c:1153:7:movingAverage	24	static
+main.c:1159:9:getPeriod	24	static
+main.c:1182:6:StartMainMenuTask	16	static
+main.c:1346:6:StartPlayTickTask	24	static
+main.c:1377:6:StartPlayState	24	static
+main.c:1402:6:HAL_TIM_PeriodElapsedCallback	16	static
+main.c:1418:6:Error_Handler	4	static,ignoring_inline_asm
