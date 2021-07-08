@@ -1096,16 +1096,12 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
 
   /*Configure GPIO pins : PA0 PA1 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB6 */
@@ -1114,6 +1110,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 }
 
@@ -1170,6 +1173,31 @@ volatile uint16_t prevPeriod = 0;
 volatile uint16_t period = 0;
 
 
+
+
+
+
+
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+
+	if (GPIO_Pin == GPIO_PIN_0)
+	{
+		printf(".\r\n");
+	}
+}
+
+
+
+
+
+
+
+
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartMainMenuTask */
@@ -1191,9 +1219,23 @@ void StartMainMenuTask(void *argument)
   for(;;)
   {
   	printf("Main Menu\r\n");
-    //HAL_ADC_Start_DMA(&hadc1, adcValue, 4);
-  	//osDelay(100);
-    //HAL_ADC_Stop_DMA(&hadc1);
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+
+  	/*
+  	if (!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0))
+  	{
+    	printf("PIN0 pressed\r\n");
+  	}
+
+  	if (!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1))
+  	{
+    	printf("PIN1 pressed\r\n");
+  	}
+		*/
+
+
+  	osDelay(1000);
 
 
   	/*
@@ -1264,7 +1306,7 @@ void StartMainMenuTask(void *argument)
 
 
 
-
+  	/*
     printf("Reading song\r\n");
 
 
@@ -1328,7 +1370,7 @@ void StartMainMenuTask(void *argument)
 		// WAIT EVENT SYNCHRONIZE?
 
     osDelay(7000000000);
-
+		*/
 
 
   }
