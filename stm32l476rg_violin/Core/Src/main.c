@@ -1235,7 +1235,11 @@ void StartMainMenuTask(void *argument)
 		*/
 
 
-  	osDelay(1000);
+
+
+
+
+  	osDelay(250);
 
 
   	/*
@@ -1254,17 +1258,44 @@ void StartMainMenuTask(void *argument)
 		*/
 
 
-  	/*
 
-    WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
+    //WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
+    //WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
+    //WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
+    //WS2812B_vSetLED(&xWS2812B, 3, 0, 0, 255);
+
+
+    WS2812B_vSetLED(&xWS2812B, 0, 0, 0, 255);
     WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 0);
-    WS2812B_vSetLED(&xWS2812B, 2, 0, 0, 255);
-    WS2812B_vSetLED(&xWS2812B, 31, 0, 0, 255);
+    WS2812B_vSetLED(&xWS2812B, 2, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 3, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 4, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 5, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 6, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 7, 255, 0, 0);
+
 
     WS2812B_vSetBrightness(&xWS2812B, 1);
     WS2812B_vSend(&xWS2812B);
-    WS2812B_vResetLEDs(&xWS2812B);
-		*/
+    //WS2812B_vResetLEDs(&xWS2812B);
+  	osDelay(250);
+
+
+    WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 1, 0, 255, 255);
+    WS2812B_vSetLED(&xWS2812B, 2, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 3, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 4, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 5, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 6, 255, 0, 0);
+    WS2812B_vSetLED(&xWS2812B, 7, 255, 0, 0);
+
+
+
+    WS2812B_vSetBrightness(&xWS2812B, 1);
+    WS2812B_vSend(&xWS2812B);
+    //WS2812B_vResetLEDs(&xWS2812B);
+
 
   		/*
       WS2812B_vSetLED(&xWS2812B, 0, 255, 0, 0);

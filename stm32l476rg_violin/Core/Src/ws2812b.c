@@ -17,8 +17,11 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 	if (htim == &htim3)
 	{
 		HAL_TIM_PWM_Stop_DMA(htim, TIM_CHANNEL_1);
+		HAL_UART_Transmit(&huart2, (uint8_t*)"testzzzz\r\n", sizeof("testzzzz\r\n"), 1000);
+
 	}
 }
+
 
 
 
@@ -59,6 +62,12 @@ void WS2812B_vResetLED(WS2812BHandle_t *pxWS28182B, uint8_t ucLEDIndex)
 	pxWS28182B->pxLEDData[ucLEDIndex].ucGreen = 0;
 	pxWS28182B->pxLEDData[ucLEDIndex].ucRed = 0;
 	pxWS28182B->pxLEDData[ucLEDIndex].ucBlue = 0;
+
+
+	pxWS28182B->pxLEDBrightness[ucLEDIndex].ucIndex = ucLEDIndex;
+	pxWS28182B->pxLEDBrightness[ucLEDIndex].ucGreen = 0;
+	pxWS28182B->pxLEDBrightness[ucLEDIndex].ucRed = 0;
+	pxWS28182B->pxLEDBrightness[ucLEDIndex].ucBlue = 0;
 }
 
 
@@ -86,6 +95,14 @@ void WS2812B_vSetBrightness(WS2812BHandle_t *pxWS28182B, int brightness)
 		pxWS28182B->pxLEDBrightness[i].ucGreen = (pxWS28182B->pxLEDData[i].ucGreen)/(tan(angle));
 		pxWS28182B->pxLEDBrightness[i].ucRed = (pxWS28182B->pxLEDData[i].ucRed)/(tan(angle));
 		pxWS28182B->pxLEDBrightness[i].ucBlue = (pxWS28182B->pxLEDData[i].ucBlue)/(tan(angle));
+	}
+#else
+	for (int i = 0; i < LED_COUNT; i++)
+	{
+		pxWS28182B->pxLEDBrightness[i].ucIndex = pxWS28182B->pxLEDData[i].ucIndex;
+		pxWS28182B->pxLEDBrightness[i].ucGreen = (pxWS28182B->pxLEDData[i].ucGreen);
+		pxWS28182B->pxLEDBrightness[i].ucRed = (pxWS28182B->pxLEDData[i].ucRed);
+		pxWS28182B->pxLEDBrightness[i].ucBlue = (pxWS28182B->pxLEDData[i].ucBlue);
 	}
 #endif
 }
@@ -116,11 +133,20 @@ void WS2812B_vSend(WS2812BHandle_t *pxWS28182B)
 		}
 	}
 
-	for (int i = 0; i < 50; i++)
+
+	static char buffer[64];
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)buffer, sprintf(buffer, "%d\r\n", WS2812B_T1H_TICKS), 1000);
+
+	for (int i = 0; i < WS2812B_RES_TICKS; i++) // [!]
 	{
 		pxWS28182B->pwmData[indx] = 0;
 		indx++;
 	}
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)buffer, sprintf(buffer, "%d\r\n", WS2812B_T0H_TICKS), 1000);
+
+
 
 	HAL_TIM_PWM_Start_DMA(pxWS28182B->pxTimer1, TIM_CHANNEL_1, (uint32_t *)pxWS28182B->pwmData, indx);
 	// [!] semaphore wait or osdelay

@@ -21,7 +21,8 @@
 #define FCPU_HZ 80000000
 
 
-#define LED_COUNT 32
+// #define LED_COUNT 32
+#define LED_COUNT 8
 #define USE_BRIGHTNESS 1
 
 
@@ -31,6 +32,8 @@
 
 
 extern TIM_HandleTypeDef htim3;
+
+UART_HandleTypeDef huart2;
 
 
 
@@ -47,6 +50,8 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 #error "LED COUNT should fit below an 8 bit signed number"
 #endif
 
+
+/*
 #define WS2812B_TRANSFER_PERIOD_MICRO_SECONDS 1.25
 #define WS2812B_TRANSFER_FREQUENCY_HZ (uint32_t)((1/WS2812B_TRANSFER_PERIOD_MICRO_SECONDS)*1000000)
 #define WS2812B_ARR (uint32_t)(FCPU_HZ)/(WS2812B_TRANSFER_FREQUENCY_HZ)
@@ -55,12 +60,48 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 #define WS2812B_T1H (float)(0.8/1.25)
 #define WS2812B_T1L	(float)(0.45/1.25)
 #define WS2812B_RES	(float)(50/1.25)
+#define WS2812B_RES_TICKS	100
+#define WS2812B_T0H_TICKS (uint32_t)(WS2812B_T0H*WS2812B_ARR)
+#define WS2812B_T0L_TICKS (uint32_t)(WS2812B_T0L*WS2812B_ARR)
+#define WS2812B_T1H_TICKS (uint32_t)(WS2812B_T1H*WS2812B_ARR)
+#define WS2812B_T1L_TICKS (uint32_t)(WS2812B_T1L*WS2812B_ARR)
+*/
+
+
+
+#define WS2812B_TRANSFER_PERIOD_MICRO_SECONDS 1.20
+#define WS2812B_TRANSFER_FREQUENCY_HZ (uint32_t)((1/WS2812B_TRANSFER_PERIOD_MICRO_SECONDS)*1000000)
+#define WS2812B_ARR (uint32_t)(FCPU_HZ)/(WS2812B_TRANSFER_FREQUENCY_HZ)
+#define WS2812B_T0H (float)(0.3/1.20)
+#define WS2812B_T0L	(float)(0.9/1.20)
+#define WS2812B_T1H (float)(0.6/1.20)
+#define WS2812B_T1L	(float)(0.6/1.20)
+#define WS2812B_RES_TICKS	100
 #define WS2812B_T0H_TICKS (uint32_t)(WS2812B_T0H*WS2812B_ARR)
 #define WS2812B_T0L_TICKS (uint32_t)(WS2812B_T0L*WS2812B_ARR)
 #define WS2812B_T1H_TICKS (uint32_t)(WS2812B_T1H*WS2812B_ARR)
 #define WS2812B_T1L_TICKS (uint32_t)(WS2812B_T1L*WS2812B_ARR)
 
 
+
+/*
+#define WS2812B_TRANSFER_PERIOD_MICRO_SECONDS 1.50
+#define WS2812B_TRANSFER_FREQUENCY_HZ (uint32_t)((1/WS2812B_TRANSFER_PERIOD_MICRO_SECONDS)*1000000)
+#define WS2812B_ARR (uint32_t)(FCPU_HZ)/(WS2812B_TRANSFER_FREQUENCY_HZ)
+
+
+#define WS2812B_T0H (float)(0.35/1.50)
+#define WS2812B_T0L	(float)(1.15/1.50)
+#define WS2812B_T1H (float)(0.8/1.50)
+#define WS2812B_T1L	(float)(0.7/1.50)
+
+
+#define WS2812B_RES_TICKS	96
+#define WS2812B_T0H_TICKS (uint32_t)(WS2812B_T0H*WS2812B_ARR)
+#define WS2812B_T0L_TICKS (uint32_t)(WS2812B_T0L*WS2812B_ARR)
+#define WS2812B_T1H_TICKS (uint32_t)(WS2812B_T1H*WS2812B_ARR)
+#define WS2812B_T1L_TICKS (uint32_t)(WS2812B_T1L*WS2812B_ARR)
+*/
 
 typedef struct
 {
@@ -94,7 +135,7 @@ typedef struct
 	DMA_HandleTypeDef *pxDMA2Channel1;
 
 
-	uint16_t pwmData[24*LED_COUNT + 50];
+	uint16_t pwmData[24*LED_COUNT + WS2812B_RES_TICKS];
 
 
 
