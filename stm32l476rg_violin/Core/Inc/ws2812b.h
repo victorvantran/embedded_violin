@@ -22,7 +22,7 @@
 
 
 // #define LED_COUNT 32
-#define LED_COUNT 8
+#define LED_COUNT 1
 #define USE_BRIGHTNESS 1
 
 
@@ -59,6 +59,9 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 #define WS2812B_T0L	(float)(0.85/1.25)
 #define WS2812B_T1H (float)(0.8/1.25)
 #define WS2812B_T1L	(float)(0.45/1.25)
+
+
+
 #define WS2812B_RES	(float)(50/1.25)
 #define WS2812B_RES_TICKS	100
 #define WS2812B_T0H_TICKS (uint32_t)(WS2812B_T0H*WS2812B_ARR)

@@ -16,11 +16,17 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim == &htim3)
 	{
-		HAL_TIM_PWM_Stop_DMA(htim, TIM_CHANNEL_1);
+		HAL_TIM_PWM_Stop_DMA(htim, TIM_CHANNEL_3);
 		HAL_UART_Transmit(&huart2, (uint8_t*)"testzzzz\r\n", sizeof("testzzzz\r\n"), 1000);
+
+		ucDataSentFlag = 1;
+		// [!] need to update DMA
 
 	}
 }
+
+
+
 
 
 
@@ -147,10 +153,11 @@ void WS2812B_vSend(WS2812BHandle_t *pxWS28182B)
 	HAL_UART_Transmit(&huart2, (uint8_t*)buffer, sprintf(buffer, "%d\r\n", WS2812B_T0H_TICKS), 1000);
 
 
+	HAL_TIM_PWM_Start_DMA(pxWS28182B->pxTimer1, TIM_CHANNEL_3, (uint32_t *)pxWS28182B->pwmData, indx);
 
-	HAL_TIM_PWM_Start_DMA(pxWS28182B->pxTimer1, TIM_CHANNEL_1, (uint32_t *)pxWS28182B->pwmData, indx);
+
 	// [!] semaphore wait or osdelay
-	//while (!ucDataSentFlag) {};
+	while (!ucDataSentFlag) {};
 	ucDataSentFlag = 0;
 }
 
